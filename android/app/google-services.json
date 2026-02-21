@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "758925525394",
+    "project_id": "cujammu-b9893",
+    "storage_bucket": "cujammu-b9893.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:758925525394:android:fcc12c9f6f91c87ac3414b",
+        "android_client_info": {
+          "package_name": "com.example.cuj"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZ91ChEviZC2DqOGrWbUOTFVHd1AMLP3k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
