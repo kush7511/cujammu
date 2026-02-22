@@ -32,7 +32,17 @@ class CUJApp extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 20),
                 child: CircleAvatar(
                   radius: 20,
-                  backgroundImage: const AssetImage('assets/images/CU_JAMMU-removebg-preview.png')),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/images/CU_JAMMU-removebg-preview.png',
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          const Icon(Icons.school, size: 20),
+                    ),
+                  ),
+                ),
                 ),
             ],
           ),
