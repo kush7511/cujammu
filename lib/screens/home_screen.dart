@@ -1,7 +1,9 @@
 import 'package:cuj/screens/login_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/student_db.dart';
+import '../services/app_settings_service.dart';
 import 'tabs/dashboard_tab.dart';
 import 'tabs/results_tab.dart';
 import 'tabs/attendance_tab.dart';
@@ -11,7 +13,19 @@ import 'tabs/FAQPage.dart';
 
 class HomeScreen extends StatefulWidget {
   final Student student;
-  const HomeScreen({super.key, required this.student});
+  final AppSettings settings;
+  final ValueChanged<bool> onThemeChanged;
+  final ValueChanged<bool> onNotificationsChanged;
+  final ValueChanged<bool> onBiometricLoginChanged;
+
+  const HomeScreen({
+    super.key,
+    required this.student,
+    required this.settings,
+    required this.onThemeChanged,
+    required this.onNotificationsChanged,
+    required this.onBiometricLoginChanged,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -26,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
     "Results",
     "Profile",
     "Help",
+    "Settings",
     "Logout",
   ];
 
@@ -70,8 +85,13 @@ class _HomeScreenState extends State<HomeScreen> {
               leading: const Icon(Icons.help),
             ),
             ListTile(
-              title: const Text("Logout"),
+              title: const Text("Settings"),
               onTap: ()=> setState(()=> index = 5),
+              leading: const Icon(Icons.settings),
+            ),
+            ListTile(
+              title: const Text("Logout"),
+              onTap: ()=> setState(()=> index = 6),
               leading: const Icon(Icons.logout),
             ),
             
@@ -86,9 +106,178 @@ class _HomeScreenState extends State<HomeScreen> {
           ResultsTab(student: widget.student),
           ProfileTab(student: widget.student),
           HelpTab(student: widget.student),
-          LogoutTab(student: widget.student),
+          SettingsTab(
+            settings: widget.settings,
+            onThemeChanged: widget.onThemeChanged,
+            onNotificationsChanged: widget.onNotificationsChanged,
+            onBiometricLoginChanged: widget.onBiometricLoginChanged,
+          ),
+          LogoutTab(
+            student: widget.student,
+            settings: widget.settings,
+            onThemeChanged: widget.onThemeChanged,
+            onNotificationsChanged: widget.onNotificationsChanged,
+            onBiometricLoginChanged: widget.onBiometricLoginChanged,
+          ),
         ],
       ),
+    );
+  }
+}
+
+class SettingsTab extends StatefulWidget {
+  final AppSettings settings;
+  final ValueChanged<bool> onThemeChanged;
+  final ValueChanged<bool> onNotificationsChanged;
+  final ValueChanged<bool> onBiometricLoginChanged;
+
+  const SettingsTab({
+    super.key,
+    required this.settings,
+    required this.onThemeChanged,
+    required this.onNotificationsChanged,
+    required this.onBiometricLoginChanged,
+  });
+
+  @override
+  State<SettingsTab> createState() => _SettingsTabState();
+}
+
+class _SettingsTabState extends State<SettingsTab> {
+  final LocalAuthentication _localAuth = LocalAuthentication();
+
+  Future<void> _setBiometricPreference(bool enabled) async {
+    if (!enabled) {
+      widget.onBiometricLoginChanged(false);
+      return;
+    }
+
+    try {
+      final canCheck = await _localAuth.canCheckBiometrics;
+      final isSupported = await _localAuth.isDeviceSupported();
+      if (!canCheck || !isSupported) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Biometric authentication is not available on this device."),
+          ),
+        );
+        return;
+      }
+
+      final didAuthenticate = await _localAuth.authenticate(
+        localizedReason: "Confirm fingerprint/biometric setup for login",
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+          stickyAuth: true,
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (!didAuthenticate) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Biometric setup was cancelled.")),
+        );
+        return;
+      }
+
+      widget.onBiometricLoginChanged(true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Biometric login enabled.")),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Unable to enable biometric login on this device."),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text(
+          "App Settings",
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        Card(
+          child: SwitchListTile(
+            secondary: const Icon(Icons.dark_mode),
+            title: const Text("Dark Mode"),
+            subtitle: const Text("Enable dark appearance across the app"),
+            value: widget.settings.darkModeEnabled,
+            onChanged: widget.onThemeChanged,
+          ),
+        ),
+        Card(
+          child: SwitchListTile(
+            secondary: const Icon(Icons.notifications_active),
+            title: const Text("Push Notifications"),
+            subtitle: const Text("Receive important alerts and updates"),
+            value: widget.settings.notificationsEnabled,
+            onChanged: widget.onNotificationsChanged,
+          ),
+        ),
+        Card(
+          child: SwitchListTile(
+            secondary: const Icon(Icons.fingerprint),
+            title: const Text("Biometric Login"),
+            subtitle: const Text("Use fingerprint/face unlock at sign in"),
+            value: widget.settings.biometricLoginEnabled,
+            onChanged: _setBiometricPreference,
+          ),
+        ),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.language),
+            title: const Text("Language"),
+            subtitle: const Text("English"),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Language settings coming soon")),
+              );
+            },
+          ),
+        ),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.lock_outline),
+            title: const Text("Privacy Policy"),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Privacy policy page coming soon")),
+              );
+            },
+          ),
+        ),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.description_outlined),
+            title: const Text("Terms & Conditions"),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Terms page coming soon")),
+              );
+            },
+          ),
+        ),
+        const Card(
+          child: ListTile(
+            leading: Icon(Icons.info_outline),
+            title: Text("App Version"),
+            subtitle: Text("1.0.0"),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -326,7 +515,19 @@ class HelpTab extends StatelessWidget {
 //logout tab start here.....
 class LogoutTab extends StatelessWidget {
   final Student student;
-  const LogoutTab({super.key, required this.student});
+  final AppSettings settings;
+  final ValueChanged<bool> onThemeChanged;
+  final ValueChanged<bool> onNotificationsChanged;
+  final ValueChanged<bool> onBiometricLoginChanged;
+
+  const LogoutTab({
+    super.key,
+    required this.student,
+    required this.settings,
+    required this.onThemeChanged,
+    required this.onNotificationsChanged,
+    required this.onBiometricLoginChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -351,7 +552,7 @@ class LogoutTab extends StatelessWidget {
                 borderRadius: BorderRadius.circular(30),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     spreadRadius: 1,
                     blurRadius: 8,
                     offset: const Offset(0, 4),
@@ -370,7 +571,14 @@ class LogoutTab extends StatelessWidget {
                 ),
                 onPressed: () {
                   Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => LoginScreen(
+                        settings: settings,
+                        onThemeChanged: onThemeChanged,
+                        onNotificationsChanged: onNotificationsChanged,
+                        onBiometricLoginChanged: onBiometricLoginChanged,
+                      ),
+                    ),
                   );
                 },
                 child: const Row(
