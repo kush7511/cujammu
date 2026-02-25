@@ -1,6 +1,11 @@
 import 'package:cuj/screens/login_screen.dart';
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 import 'package:local_auth/local_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/student_db.dart';
 import '../services/app_settings_service.dart';
@@ -9,7 +14,6 @@ import 'tabs/results_tab.dart';
 import 'tabs/attendance_tab.dart';
 import 'tabs/ComplainPage.dart';
 import 'tabs/FAQPage.dart';
-
 
 class HomeScreen extends StatefulWidget {
   final Student student;
@@ -33,16 +37,34 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int index = 0;
+  late Student _student;
 
   final tabs = [
-    "Attendance",
     "Dashboard",
-    "Results",
     "Profile",
-    "Help",
+    "Attendance",
+    "Results",
     "Settings",
+    "Help",
     "Logout",
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _student = widget.student;
+  }
+
+  void _selectTab(int newIndex) {
+    setState(() => index = newIndex);
+    Navigator.of(context).pop();
+  }
+
+  void _onStudentUpdated(Student updated) {
+    setState(() {
+      _student = updated;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,68 +74,67 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           children: [
             UserAccountsDrawerHeader(
-              currentAccountPicture: CircleAvatar(backgroundImage: AssetImage('assets/images/profile_picture.png', 
-            ), 
-            radius: 40,
+              currentAccountPicture: _StudentAvatar(
+                student: _student,
+                radius: 40,
+              ),
+              accountName: Text(_student.name),
+              accountEmail: Text(_student.roll),
             ),
-              accountName: Text(widget.student.name),
-              accountEmail: Text(widget.student.roll),
-            ),
-             ListTile(
-              title: const Text("Attendance"),
-              onTap: () => setState(() => index = 0),
-              leading: const Icon(Icons.calendar_month),
-            ),
-             ListTile(
+            ListTile(
               title: const Text("Dashboard"),
-              onTap: () => setState(() => index = 1),
+              onTap: () => _selectTab(0),
               leading: const Icon(Icons.dashboard),
             ),
             ListTile(
+              title: const Text("Profile"),
+              onTap: () => _selectTab(1),
+              leading: const Icon(Icons.person),
+            ),
+            ListTile(
+              title: const Text("Attendance"),
+              onTap: () => _selectTab(2),
+              leading: const Icon(Icons.calendar_month),
+            ),
+            ListTile(
               title: const Text("Results"),
-              onTap: () => setState(() => index = 2),
+              onTap: () => _selectTab(3),
               leading: const Icon(Icons.assessment),
             ),
             ListTile(
-              title: const Text("Profile"),
-              onTap: () => setState(() => index = 3),
-              leading: const Icon(Icons.person),
-            ),
-             ListTile(
-              title: const Text("Help"),
-              onTap: ()=> setState(()=> index = 4),
-              leading: const Icon(Icons.help),
-            ),
-            ListTile(
               title: const Text("Settings"),
-              onTap: ()=> setState(()=> index = 5),
+              onTap: () => _selectTab(4),
               leading: const Icon(Icons.settings),
             ),
             ListTile(
+              title: const Text("Help"),
+              onTap: () => _selectTab(5),
+              leading: const Icon(Icons.help),
+            ),
+            ListTile(
               title: const Text("Logout"),
-              onTap: ()=> setState(()=> index = 6),
+              onTap: () => _selectTab(6),
               leading: const Icon(Icons.logout),
             ),
-            
           ],
         ),
       ),
       body: IndexedStack(
         index: index,
         children: [
-          AttendanceTab(student: widget.student),
-          DashboardTab(student: widget.student),
-          ResultsTab(student: widget.student),
-          ProfileTab(student: widget.student),
-          HelpTab(student: widget.student),
+          DashboardTab(student: _student),
+          ProfileTab(student: _student, onStudentUpdated: _onStudentUpdated),
+          AttendanceTab(student: _student),
+          ResultsTab(student: _student),
           SettingsTab(
             settings: widget.settings,
             onThemeChanged: widget.onThemeChanged,
             onNotificationsChanged: widget.onNotificationsChanged,
             onBiometricLoginChanged: widget.onBiometricLoginChanged,
           ),
+          HelpTab(student: widget.student),
           LogoutTab(
-            student: widget.student,
+            student: _student,
             settings: widget.settings,
             onThemeChanged: widget.onThemeChanged,
             onNotificationsChanged: widget.onNotificationsChanged,
@@ -159,7 +180,9 @@ class _SettingsTabState extends State<SettingsTab> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Biometric authentication is not available on this device."),
+            content: Text(
+              "Biometric authentication is not available on this device.",
+            ),
           ),
         );
         return;
@@ -183,9 +206,9 @@ class _SettingsTabState extends State<SettingsTab> {
       }
 
       widget.onBiometricLoginChanged(true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Biometric login enabled.")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Biometric login enabled.")));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -253,7 +276,9 @@ class _SettingsTabState extends State<SettingsTab> {
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Privacy policy page coming soon")),
+                const SnackBar(
+                  content: Text("Privacy policy page coming soon"),
+                ),
               );
             },
           ),
@@ -274,16 +299,179 @@ class _SettingsTabState extends State<SettingsTab> {
           child: ListTile(
             leading: Icon(Icons.info_outline),
             title: Text("App Version"),
-            subtitle: Text("1.0.0"),
+            subtitle: Text("1.0.0\nDeveloped by Kush Kumar"),
+          ),
+        ),
+        const Card(
+          child: ListTile(
+            leading: Icon(Icons.verified),
+            title: Text("Developer"),
+            subtitle: Text("Kush Kumar"),
           ),
         ),
       ],
     );
   }
 }
+
 class ProfileTab extends StatelessWidget {
   final Student student;
-  const ProfileTab({super.key, required this.student});
+  final ValueChanged<Student> onStudentUpdated;
+
+  const ProfileTab({
+    super.key,
+    required this.student,
+    required this.onStudentUpdated,
+  });
+
+  Future<void> _pickAndSaveProfilePicture(
+    BuildContext context,
+    ImageSource source,
+  ) async {
+    if (isProtectedStudentRoll(student.roll)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Developer account is protected. Profile changes require developer approval.",
+          ),
+        ),
+      );
+      return;
+    }
+
+    final picker = ImagePicker();
+    final selected = await picker.pickImage(
+      source: source,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 80,
+    );
+    if (selected == null) return;
+
+    final bytes = await selected.readAsBytes();
+    final imageBase64 = _toCircularPngBase64(bytes);
+    if (imageBase64 == null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Could not process selected image.")),
+      );
+      return;
+    }
+    await updateStudentProfileImage(
+      roll: student.roll,
+      profileImageBase64: imageBase64,
+    );
+    final updated = studentDB[student.roll] ?? student;
+    onStudentUpdated(updated);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Profile picture updated.")),
+    );
+  }
+
+  Future<void> _removeProfilePicture(BuildContext context) async {
+    if (isProtectedStudentRoll(student.roll)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Developer account is protected. Profile changes require developer approval.",
+          ),
+        ),
+      );
+      return;
+    }
+
+    await updateStudentProfileImage(
+      roll: student.roll,
+      profileImageBase64: null,
+    );
+    final updated = studentDB[student.roll] ?? student;
+    onStudentUpdated(updated);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Profile picture reset to default.")),
+    );
+  }
+
+  Future<void> _showProfilePhotoActions(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text("Take Photo"),
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  await _pickAndSaveProfilePicture(context, ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text("Choose from Gallery"),
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  await _pickAndSaveProfilePicture(context, ImageSource.gallery);
+                },
+              ),
+              if ((student.profileImageBase64 ?? "").trim().isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: const Text("Remove Profile Picture"),
+                  textColor: Colors.red,
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    await _removeProfilePicture(context);
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.close),
+                title: const Text("Cancel"),
+                onTap: () => Navigator.pop(sheetContext),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String? _toCircularPngBase64(Uint8List sourceBytes) {
+    final decoded = img.decodeImage(sourceBytes);
+    if (decoded == null) return null;
+
+    final shortestSide = decoded.width < decoded.height
+        ? decoded.width
+        : decoded.height;
+    final offsetX = (decoded.width - shortestSide) ~/ 2;
+    final offsetY = (decoded.height - shortestSide) ~/ 2;
+    final square = img.copyCrop(
+      decoded,
+      x: offsetX,
+      y: offsetY,
+      width: shortestSide,
+      height: shortestSide,
+    );
+    final resized = img.copyResize(square, width: 512, height: 512);
+    final radius = resized.width / 2;
+
+    for (var y = 0; y < resized.height; y++) {
+      for (var x = 0; x < resized.width; x++) {
+        final dx = x - radius;
+        final dy = y - radius;
+        final isOutsideCircle = (dx * dx + dy * dy) > (radius * radius);
+        if (isOutsideCircle) {
+          resized.setPixelRgba(x, y, 0, 0, 0, 0);
+        }
+      }
+    }
+
+    return base64Encode(img.encodePng(resized));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -294,26 +482,34 @@ class ProfileTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-
               const SizedBox(height: 20),
 
               // Title
               const Text(
                 "Student Profile",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
 
               const SizedBox(height: 20),
 
               // Profile Image
-              CircleAvatar(
-                backgroundImage:
-                    const AssetImage('assets/images/profile_picture.png'),
-                radius: 80,
+              Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  _StudentAvatar(student: student, radius: 80),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF003366),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: IconButton(
+                      onPressed: () => _showProfilePhotoActions(context),
+                      icon: const Icon(Icons.edit, color: Colors.white),
+                      tooltip: "Edit profile picture",
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 30),
@@ -322,7 +518,19 @@ class ProfileTab extends StatelessWidget {
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.person),
-                  title: Text(student.name),
+                  title: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 6,
+                    children: [
+                      Text(student.name),
+                      if (isProtectedStudentRoll(student.roll))
+                        const Icon(
+                          Icons.verified,
+                          color: Color(0xFF1976D2),
+                          size: 20,
+                        ),
+                    ],
+                  ),
                   subtitle: Text("Course: ${student.course}"),
                 ),
               ),
@@ -384,6 +592,72 @@ class ProfileTab extends StatelessWidget {
   }
 }
 
+class _StudentAvatar extends StatelessWidget {
+  final Student student;
+  final double radius;
+
+  const _StudentAvatar({required this.student, required this.radius});
+
+  Color _backgroundColorFromName(String name) {
+    const palette = <Color>[
+      Color(0xFFE3F2FD),
+      Color(0xFFE8F5E9),
+      Color(0xFFFFF8E1),
+      Color(0xFFF3E5F5),
+      Color(0xFFFFEBEE),
+      Color(0xFFE0F7FA),
+      Color(0xFFF1F8E9),
+    ];
+    final hash = name.trim().toLowerCase().hashCode;
+    return palette[hash.abs() % palette.length];
+  }
+
+  String _initialsFromName(String name) {
+    final parts = name
+        .trim()
+        .split(RegExp(r"\s+"))
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return "ST";
+    if (parts.length == 1) {
+      final word = parts.first;
+      final first = word.substring(0, 1).toUpperCase();
+      final last = word.substring(word.length - 1).toUpperCase();
+      return "$first$last";
+    }
+    final first = parts.first.substring(0, 1).toUpperCase();
+    final last = parts.last.substring(parts.last.length - 1).toUpperCase();
+    return "$first$last";
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final encoded = student.profileImageBase64;
+    if (encoded != null && encoded.trim().isNotEmpty) {
+      try {
+        return CircleAvatar(
+          radius: radius,
+          backgroundImage: MemoryImage(base64Decode(encoded)),
+        );
+      } catch (_) {
+        // Fall through to initials avatar when image data is invalid.
+      }
+    }
+
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: _backgroundColorFromName(student.name),
+      child: Text(
+        _initialsFromName(student.name),
+        style: TextStyle(
+          color: const Color(0xFF003366),
+          fontSize: radius * 0.48,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+}
 
 class HelpTab extends StatelessWidget {
   const HelpTab({super.key, required Student student});
@@ -395,13 +669,9 @@ class HelpTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           const Text(
             "Help & Support",
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
 
           const SizedBox(height: 20),
@@ -446,9 +716,7 @@ class HelpTab extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const FAQPage(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const FAQPage()),
                 );
               },
             ),
@@ -464,9 +732,7 @@ class HelpTab extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => ComplaintPage(),
-                  ),
+                  MaterialPageRoute(builder: (context) => ComplaintPage()),
                 );
               },
             ),
@@ -489,28 +755,27 @@ class HelpTab extends StatelessWidget {
 
           // Campus Location
           Card(
-           child: ListTile(
-          leading: const Icon(Icons.location_on, color: Colors.red),
-      title: const Text("Central University of Jammu"),
-       subtitle: const Text("Bagla, Rahya-Suchani, Jammu & Kashmir"),
-    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-    onTap: () async {
-      final Uri url = Uri.parse(
-          "https://www.google.com/maps/search/?api=1&query=Central+University+of+Jammu");
+            child: ListTile(
+              leading: const Icon(Icons.location_on, color: Colors.red),
+              title: const Text("Central University of Jammu"),
+              subtitle: const Text("Bagla, Rahya-Suchani, Jammu & Kashmir"),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () async {
+                final Uri url = Uri.parse(
+                  "https://www.google.com/maps/search/?api=1&query=Central+University+of+Jammu",
+                );
 
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      }
-    },
-  ),
-),
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                }
+              },
+            ),
+          ),
         ],
       ),
     );
   }
 }
-
-
 
 //logout tab start here.....
 class LogoutTab extends StatelessWidget {
@@ -563,7 +828,10 @@ class LogoutTab extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF003366),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 50,
+                    vertical: 15,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),

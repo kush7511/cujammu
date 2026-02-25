@@ -21,7 +21,11 @@
         {
             "name": "cuj",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            "toolArgs": [
+                "--dart-define",
+                "OPENAI_API_KEY=YOUR_OPENAI_API_KEY"
+            ]
         },
         {
             "name": "cuj (profile mode)",
