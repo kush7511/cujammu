@@ -247,6 +247,7 @@ Future<String?> registerStudent({
     name: name,
     course: course,
     password: password,
+    profileImageBase64: null,
     cgpa: 0,
     attendance: 0,
     results: const [],
