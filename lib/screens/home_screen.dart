@@ -623,6 +623,13 @@ class _StudentAvatar extends StatelessWidget {
       }
     }
 
+    if (student.roll == protectedDeveloperRoll) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundImage: const AssetImage("assets/images/profile_picture.png"),
+      );
+    }
+
     return CircleAvatar(
       radius: radius,
       backgroundColor: _backgroundColorFromName(student.name),

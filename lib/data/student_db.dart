@@ -235,6 +235,9 @@ Future<String?> registerStudent({
   required String password,
 }) async {
   await loadRegisteredStudents();
+  if (roll.trim().toUpperCase() == protectedDeveloperRoll) {
+    return "This enrollment number is reserved.";
+  }
   if (studentDB.containsKey(roll)) {
     return "Enrollment number already exists.";
   }
