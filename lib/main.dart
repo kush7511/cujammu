@@ -89,42 +89,6 @@ class _CUJAppState extends State<CUJApp> {
           centerTitle: true,
         ),
       ),
-
-      builder: (context, child) {
-        if (child is _WelcomeSplashScreen || child is _InitialLoadingScreen) {
-          return child ?? const SizedBox.shrink();
-        }
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text(
-              "Central University of Jammu",
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 20),
-                child: CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Colors.white,
-                  child: Padding(
-                    padding: const EdgeInsets.all(3),
-                    child: Image.asset(
-                      'assets/images/CU_JAMMU-removebg-preview.png',
-                      width: 40,
-                      height: 40,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) =>
-                          const Icon(Icons.school, size: 20),
-                    ),
-                  ),
-                ),
-                ),
-            ],
-          ),
-          body: child,
-        );
-      },
       home: !_splashDone
           ? _WelcomeSplashScreen(
               onCompleted: () {

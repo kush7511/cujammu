@@ -1,9 +1,12 @@
 import 'package:cuj/screens/in_app_webview_page.dart';
+import 'package:cuj/screens/hostel_block_auth_screen.dart';
 import 'package:cuj/screens/chatbot/cuj_chatbot_sheet.dart';
 import 'package:cuj/screens/timetable_page.dart';
 import 'package:cuj/screens/transport_page.dart';
 import 'package:flutter/material.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../data/student_db.dart';
+import '../../data/hostel_student_db.dart';
 
 class DashboardTab extends StatefulWidget {
   final Student student;
@@ -102,6 +105,74 @@ class _DashboardTabState extends State<DashboardTab> {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const TransportPage()),
+          );
+        },
+      ),
+      _DashboardItem(
+        title: "Scholarships",
+        icon: Icons.workspace_premium,
+        color: Colors.green,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => _ScholarshipsPage(student: widget.student),
+            ),
+          );
+        },
+      ),
+      _DashboardItem(
+        title: "Hostel & Mess",
+        icon: Icons.meeting_room,
+        color: Colors.deepOrange,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const _HostelMessPage(),
+            ),
+          );
+        },
+      ),
+      _DashboardItem(
+        title: "Placement Cell",
+        icon: Icons.business_center,
+        color: Colors.deepPurple,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const InAppWebViewPage(
+                title: "Placement Cell",
+                url: "https://www.cujammu.ac.in/en/placements/",
+              ),
+            ),
+          );
+        },
+      ),
+      _DashboardItem(
+        title: "Academic Calendar",
+        icon: Icons.event_available,
+        color: Colors.blueGrey,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const _AcademicCalendarPdfPage(),
+            ),
+          );
+        },
+      ),
+      _DashboardItem(
+        title: "Documents",
+        icon: Icons.folder_shared,
+        color: Colors.cyan,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => _DocumentsPage(student: widget.student),
+            ),
           );
         },
       ),
@@ -489,6 +560,321 @@ class _ChecklistLine extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(child: Text(text)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScholarshipsPage extends StatelessWidget {
+  final Student student;
+
+  const _ScholarshipsPage({required this.student});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Scholarships")),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.badge_outlined),
+              title: Text(student.name),
+              subtitle: Text("${student.roll} - ${student.course}"),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.check_circle_outline, color: Colors.green),
+              title: Text("National Scholarship Portal"),
+              subtitle: Text(
+                "Track government scholarship notifications and deadlines.",
+              ),
+            ),
+          ),
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.account_balance, color: Colors.indigo),
+              title: Text("State Scholarships"),
+              subtitle: Text(
+                "Apply for Jammu & Kashmir and other state funding schemes.",
+              ),
+            ),
+          ),
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.rule_folder_outlined, color: Colors.orange),
+              title: Text("Eligibility Checklist"),
+              subtitle: Text(
+                "Keep caste/income certificates, mark sheets, and bank details ready.",
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HostelMessPage extends StatelessWidget {
+  const _HostelMessPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Hostel & Mess")),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: const [
+          Text(
+            "Hostel Blocks",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 10),
+          _HostelBlockTile(
+            name: "SPM Boys Hostel",
+            subtitle: "Boys Hostel Block",
+            icon: Icons.apartment_rounded,
+            backgroundColor: Color(0xFFE3F2FD),
+            iconColor: Color(0xFF1565C0),
+            hostelBlock: HostelBlock.spmBoys,
+          ),
+          SizedBox(height: 10),
+          _HostelBlockTile(
+            name: "BRS Boys Hostel",
+            subtitle: "Boys Hostel Block",
+            icon: Icons.home_work_rounded,
+            backgroundColor: Color(0xFFE8F5E9),
+            iconColor: Color(0xFF2E7D32),
+            hostelBlock: HostelBlock.brsBoys,
+          ),
+          SizedBox(height: 10),
+          _HostelBlockTile(
+            name: "Shailputri Girls Hostel",
+            subtitle: "Girls Hostel Block",
+            icon: Icons.house_rounded,
+            backgroundColor: Color(0xFFFCE4EC),
+            iconColor: Color(0xFFAD1457),
+            hostelBlock: HostelBlock.shailputriGirls,
+          ),
+          SizedBox(height: 12),
+          Text(
+            "Mess Services",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 10),
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.restaurant_menu, color: Colors.teal),
+              title: Text("Mess Menu"),
+              subtitle: Text(
+                "Check breakfast/lunch/dinner schedule and special meal notices.",
+              ),
+            ),
+          ),
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.report_gmailerrorred, color: Colors.red),
+              title: Text("Hostel Complaint"),
+              subtitle: Text(
+                "Use Help section to submit water, electricity, or sanitation issues.",
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HostelBlockTile extends StatelessWidget {
+  final String name;
+  final String subtitle;
+  final IconData icon;
+  final Color backgroundColor;
+  final Color iconColor;
+  final HostelBlock hostelBlock;
+
+  const _HostelBlockTile({
+    required this.name,
+    required this.subtitle,
+    required this.icon,
+    required this.backgroundColor,
+    required this.iconColor,
+    required this.hostelBlock,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => HostelBlockAuthScreen(hostelBlock: hostelBlock),
+          ),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(minHeight: 108),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: Colors.white,
+              child: Icon(icon, color: iconColor),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black54),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PlacementCellPage extends StatelessWidget {
+  final Student student;
+
+  const _PlacementCellPage({required this.student});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Placement Cell")),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.person_pin_circle_outlined),
+              title: const Text("Current Profile"),
+              subtitle: Text(
+                "${student.name}\nCGPA: ${student.cgpa.toStringAsFixed(1)}",
+              ),
+              isThreeLine: true,
+            ),
+          ),
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.work_outline, color: Colors.deepPurple),
+              title: Text("Internship Updates"),
+              subtitle: Text(
+                "Track internship opportunities and application timelines.",
+              ),
+            ),
+          ),
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.groups_2_outlined, color: Colors.blue),
+              title: Text("Campus Drives"),
+              subtitle: Text(
+                "View upcoming company drives, eligibility and venue details.",
+              ),
+            ),
+          ),
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.description_outlined, color: Colors.brown),
+              title: Text("Resume Checklist"),
+              subtitle: Text(
+                "Keep updated resume, projects, certificates and coding profiles ready.",
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AcademicCalendarPdfPage extends StatelessWidget {
+  const _AcademicCalendarPdfPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Academic Calendar")),
+      body: SfPdfViewer.asset("assets/pdfs/2026.pdf"),
+    );
+  }
+}
+
+class _DocumentsPage extends StatelessWidget {
+  final Student student;
+
+  const _DocumentsPage({required this.student});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Documents")),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.perm_identity),
+              title: const Text("Student Identity"),
+              subtitle: Text("${student.name}\n${student.roll}"),
+              isThreeLine: true,
+            ),
+          ),
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.request_page, color: Colors.blueGrey),
+              title: Text("Bonafide Certificate"),
+              subtitle: Text(
+                "Apply through department office and collect signed hard copy.",
+              ),
+            ),
+          ),
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.verified_user_outlined, color: Colors.teal),
+              title: Text("Character/Transfer Certificate"),
+              subtitle: Text("Final year students can request through registrar."),
+            ),
+          ),
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.file_copy_outlined, color: Colors.purple),
+              title: Text("Marksheet Copies"),
+              subtitle: Text(
+                "Maintain scanned copies of semester marksheets for internships and placements.",
+              ),
+            ),
+          ),
         ],
       ),
     );
