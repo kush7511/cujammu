@@ -3,7 +3,11 @@ import 'package:cuj/screens/hostel_block_auth_screen.dart';
 import 'package:cuj/screens/chatbot/cuj_chatbot_sheet.dart';
 import 'package:cuj/screens/timetable_page.dart';
 import 'package:cuj/screens/transport_page.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../data/student_db.dart';
 import '../../data/hostel_student_db.dart';
@@ -830,53 +834,374 @@ class _AcademicCalendarPdfPage extends StatelessWidget {
   }
 }
 
-class _DocumentsPage extends StatelessWidget {
+class _DocumentsPage extends StatefulWidget {
   final Student student;
 
   const _DocumentsPage({required this.student});
 
   @override
+  State<_DocumentsPage> createState() => _DocumentsPageState();
+}
+
+class _DocumentsPageState extends State<_DocumentsPage> {
+  final LocalAuthentication _localAuth = LocalAuthentication();
+  final ImagePicker _picker = ImagePicker();
+  final List<_SecureDocument> _documents = [];
+  bool _loading = true;
+  bool _unlocked = false;
+
+  String get _storageKey => "secure_documents_${widget.student.roll}";
+
+  @override
+  void initState() {
+    super.initState();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await _loadDocuments();
+    await _unlockVault();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+    });
+  }
+
+  Future<void> _loadDocuments() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_storageKey);
+    if (raw == null || raw.trim().isEmpty) return;
+    try {
+      final parsed = jsonDecode(raw);
+      if (parsed is! List) return;
+      _documents
+        ..clear()
+        ..addAll(
+          parsed
+              .whereType<Map>()
+              .map(
+                (e) => _SecureDocument.fromJson(Map<String, dynamic>.from(e)),
+              ),
+        );
+    } catch (_) {
+      // Ignore malformed persisted data.
+    }
+  }
+
+  Future<void> _saveDocuments() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _storageKey,
+      jsonEncode(_documents.map((e) => e.toJson()).toList()),
+    );
+  }
+
+  Future<void> _unlockVault() async {
+    try {
+      final canCheck = await _localAuth.canCheckBiometrics;
+      final supported = await _localAuth.isDeviceSupported();
+      if (!canCheck || !supported) {
+        _unlocked = true;
+        return;
+      }
+      _unlocked = await _localAuth.authenticate(
+        localizedReason: "Authenticate to access secure university documents",
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+          stickyAuth: true,
+        ),
+      );
+    } catch (_) {
+      _unlocked = false;
+    }
+  }
+
+  Future<void> _addDocument() async {
+    final titleCtrl = TextEditingController();
+    String category = "Marksheet";
+    ImageSource source = ImageSource.gallery;
+    bool saving = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (_, setDialogState) {
+            return AlertDialog(
+              title: const Text("Add Document"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Document Title",
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: category,
+                    decoration: const InputDecoration(labelText: "Category"),
+                    items: const [
+                      DropdownMenuItem(
+                        value: "Marksheet",
+                        child: Text("Marksheet"),
+                      ),
+                      DropdownMenuItem(value: "ID Card", child: Text("ID Card")),
+                      DropdownMenuItem(
+                        value: "Certificate",
+                        child: Text("Certificate"),
+                      ),
+                      DropdownMenuItem(
+                        value: "Fee Receipt",
+                        child: Text("Fee Receipt"),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setDialogState(() {
+                        category = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<ImageSource>(
+                    initialValue: source,
+                    decoration: const InputDecoration(labelText: "Source"),
+                    items: const [
+                      DropdownMenuItem(
+                        value: ImageSource.gallery,
+                        child: Text("Gallery"),
+                      ),
+                      DropdownMenuItem(
+                        value: ImageSource.camera,
+                        child: Text("Camera"),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setDialogState(() {
+                        source = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving ? null : () => Navigator.pop(dialogContext),
+                  child: const Text("Cancel"),
+                ),
+                FilledButton(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          final title = titleCtrl.text.trim();
+                          if (title.isEmpty) {
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(
+                              const SnackBar(
+                                content: Text("Document title is required."),
+                              ),
+                            );
+                            return;
+                          }
+
+                          setDialogState(() {
+                            saving = true;
+                          });
+                          final selected = await _picker.pickImage(
+                            source: source,
+                            maxWidth: 1400,
+                            maxHeight: 1400,
+                            imageQuality: 85,
+                          );
+                          if (selected == null) {
+                            if (dialogContext.mounted) {
+                              setDialogState(() {
+                                saving = false;
+                              });
+                            }
+                            return;
+                          }
+
+                          final bytes = await selected.readAsBytes();
+                          _documents.insert(
+                            0,
+                            _SecureDocument(
+                              id: DateTime.now().microsecondsSinceEpoch.toString(),
+                              title: title,
+                              category: category,
+                              imageBase64: base64Encode(bytes),
+                              uploadedOn: DateTime.now(),
+                            ),
+                          );
+                          await _saveDocuments();
+                          if (!mounted) return;
+                          setState(() {});
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                          }
+                        },
+                  child: const Text("Save"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    titleCtrl.dispose();
+  }
+
+  String _date(DateTime d) =>
+      "${d.day.toString().padLeft(2, "0")}/${d.month.toString().padLeft(2, "0")}/${d.year}";
+
+  @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (!_unlocked) {
+      return Scaffold(
+        appBar: AppBar(title: const Text("Documents")),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock, size: 64, color: Color(0xFF003366)),
+                const SizedBox(height: 12),
+                const Text(
+                  "Secure Document Vault Locked",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Authenticate to access university documents.",
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: () async {
+                    await _unlockVault();
+                    if (!mounted) return;
+                    setState(() {});
+                  },
+                  icon: const Icon(Icons.fingerprint),
+                  label: const Text("Unlock"),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text("Documents")),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addDocument,
+        icon: const Icon(Icons.add),
+        label: const Text("Add Document"),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Card(
             child: ListTile(
-              leading: const Icon(Icons.perm_identity),
-              title: const Text("Student Identity"),
-              subtitle: Text("${student.name}\n${student.roll}"),
+              leading: const Icon(Icons.security_outlined, color: Colors.green),
+              title: const Text("Secure University Document Vault"),
+              subtitle: Text(
+                "${widget.student.name}\n${widget.student.roll}\n"
+                "Store important university documents in one protected place.",
+              ),
               isThreeLine: true,
             ),
           ),
-          const Card(
-            child: ListTile(
-              leading: Icon(Icons.request_page, color: Colors.blueGrey),
-              title: Text("Bonafide Certificate"),
-              subtitle: Text(
-                "Apply through department office and collect signed hard copy.",
+          const SizedBox(height: 8),
+          if (_documents.isEmpty)
+            const Card(
+              child: ListTile(
+                leading: Icon(Icons.folder_open_outlined),
+                title: Text("No saved documents"),
+                subtitle: Text(
+                  "Tap 'Add Document' to upload marksheets, ID cards, certificates, and receipts.",
+                ),
               ),
-            ),
-          ),
-          const Card(
-            child: ListTile(
-              leading: Icon(Icons.verified_user_outlined, color: Colors.teal),
-              title: Text("Character/Transfer Certificate"),
-              subtitle: Text("Final year students can request through registrar."),
-            ),
-          ),
-          const Card(
-            child: ListTile(
-              leading: Icon(Icons.file_copy_outlined, color: Colors.purple),
-              title: Text("Marksheet Copies"),
-              subtitle: Text(
-                "Maintain scanned copies of semester marksheets for internships and placements.",
-              ),
-            ),
-          ),
+            )
+          else
+            ..._documents.map((doc) {
+              return Card(
+                child: ListTile(
+                  leading: const Icon(Icons.description_outlined),
+                  title: Text(doc.title),
+                  subtitle: Text("${doc.category} • ${_date(doc.uploadedOn)}"),
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (value) async {
+                      if (value == "view") {
+                        await showDialog<void>(
+                          context: context,
+                          builder: (_) => Dialog(
+                            child: InteractiveViewer(
+                              child: Image.memory(base64Decode(doc.imageBase64)),
+                            ),
+                          ),
+                        );
+                      }
+                      if (value == "delete") {
+                        _documents.removeWhere((e) => e.id == doc.id);
+                        await _saveDocuments();
+                        if (!mounted) return;
+                        setState(() {});
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: "view", child: Text("View")),
+                      PopupMenuItem(value: "delete", child: Text("Delete")),
+                    ],
+                  ),
+                ),
+              );
+            }),
         ],
       ),
+    );
+  }
+}
+
+class _SecureDocument {
+  final String id;
+  final String title;
+  final String category;
+  final String imageBase64;
+  final DateTime uploadedOn;
+
+  const _SecureDocument({
+    required this.id,
+    required this.title,
+    required this.category,
+    required this.imageBase64,
+    required this.uploadedOn,
+  });
+
+  Map<String, dynamic> toJson() => {
+    "id": id,
+    "title": title,
+    "category": category,
+    "imageBase64": imageBase64,
+    "uploadedOn": uploadedOn.toIso8601String(),
+  };
+
+  factory _SecureDocument.fromJson(Map<String, dynamic> json) {
+    return _SecureDocument(
+      id: json["id"] as String,
+      title: json["title"] as String,
+      category: json["category"] as String,
+      imageBase64: json["imageBase64"] as String,
+      uploadedOn: DateTime.parse(json["uploadedOn"] as String),
     );
   }
 }
