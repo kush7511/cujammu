@@ -208,9 +208,6 @@ Future<void> loadRegisteredStudents() async {
       for (final item in parsed) {
         if (item is Map) {
           final student = Student.fromJson(Map<String, dynamic>.from(item));
-          if (isProtectedStudentRoll(student.roll)) {
-            continue;
-          }
           studentDB[student.roll] = student;
         }
       }
@@ -224,10 +221,7 @@ Future<void> loadRegisteredStudents() async {
 
 Future<void> saveRegisteredStudents() async {
   final prefs = await SharedPreferences.getInstance();
-  final students = studentDB.values
-      .where((s) => !isProtectedStudentRoll(s.roll))
-      .map((s) => s.toJson())
-      .toList();
+  final students = studentDB.values.map((s) => s.toJson()).toList();
   await prefs.setString(_registeredStudentsKey, jsonEncode(students));
 }
 
@@ -269,7 +263,6 @@ Future<void> updateStudentProfileImage({
   await loadRegisteredStudents();
   final existing = studentDB[roll];
   if (existing == null) return;
-  if (isProtectedStudentRoll(roll)) return;
   if (profileImageBase64 == null || profileImageBase64.trim().isEmpty) {
     studentDB[roll] = existing.copyWith(clearProfileImage: true);
   } else {
@@ -290,9 +283,6 @@ Future<String?> deleteStudentAccount({
   }
   if (existing.password != password) {
     return "Incorrect password.";
-  }
-  if (_protectedStudentRolls.contains(roll)) {
-    return "This default account cannot be deleted from the app.";
   }
 
   studentDB.remove(roll);

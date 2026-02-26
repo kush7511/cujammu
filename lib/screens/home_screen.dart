@@ -328,17 +328,6 @@ class ProfileTab extends StatelessWidget {
     BuildContext context,
     ImageSource source,
   ) async {
-    if (isProtectedStudentRoll(student.roll)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Developer account is protected. Profile changes require developer approval.",
-          ),
-        ),
-      );
-      return;
-    }
-
     final picker = ImagePicker();
     final selected = await picker.pickImage(
       source: source,
@@ -370,17 +359,6 @@ class ProfileTab extends StatelessWidget {
   }
 
   Future<void> _removeProfilePicture(BuildContext context) async {
-    if (isProtectedStudentRoll(student.roll)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Developer account is protected. Profile changes require developer approval.",
-          ),
-        ),
-      );
-      return;
-    }
-
     await updateStudentProfileImage(
       roll: student.roll,
       profileImageBase64: null,
