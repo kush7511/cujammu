@@ -600,12 +600,13 @@ class _StudentAvatar extends StatelessWidget {
     if (parts.length == 1) {
       final word = parts.first;
       final first = word.substring(0, 1).toUpperCase();
-      final last = word.substring(word.length - 1).toUpperCase();
-      return "$first$last";
+      if (word.length == 1) return "$first$first";
+      final second = word.substring(1, 2).toUpperCase();
+      return "$first$second";
     }
     final first = parts.first.substring(0, 1).toUpperCase();
-    final last = parts.last.substring(parts.last.length - 1).toUpperCase();
-    return "$first$last";
+    final surnameFirst = parts.last.substring(0, 1).toUpperCase();
+    return "$first$surnameFirst";
   }
 
   @override
