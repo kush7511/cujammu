@@ -1,12 +1,20 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'screens/login_screen.dart';
 import 'services/app_settings_service.dart';
+import 'services/university_notification_service.dart';
 
-void main() {
+
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  await UniversityNotificationService.instance.initialize();
   runApp(const CUJApp());
 }
+
 
 class CUJApp extends StatefulWidget {
   const CUJApp({super.key});

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cuj/screens/in_app_webview_page.dart';
 import 'package:cuj/screens/hostel_block_auth_screen.dart';
 import 'package:cuj/screens/chatbot/cuj_chatbot_sheet.dart';
@@ -11,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../data/student_db.dart';
 import '../../data/hostel_student_db.dart';
+import '../../services/university_notification_service.dart';
 
 class DashboardTab extends StatefulWidget {
   final Student student;
@@ -22,11 +24,81 @@ class DashboardTab extends StatefulWidget {
 
 class _DashboardTabState extends State<DashboardTab> {
   final TextEditingController _searchController = TextEditingController();
+  List<UniversityNotification> _notifications = [];
+  StreamSubscription<List<UniversityNotification>>? _notificationsSub;
+
+  bool get _hasUnreadNotifications =>
+      _notifications.any((item) => !item.isRead);
+
+  @override
+  void initState() {
+    super.initState();
+    final service = UniversityNotificationService.instance;
+    _notifications = service.notifications;
+    _notificationsSub = service.notificationsStream.listen((items) {
+      if (!mounted) return;
+      setState(() {
+        _notifications = items;
+      });
+    });
+  }
 
   @override
   void dispose() {
+    _notificationsSub?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openNotificationsSheet() async {
+    await UniversityNotificationService.instance.markAllAsRead();
+    await showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return SizedBox(
+          height: MediaQuery.of(context).size.height * 0.68,
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              const Text(
+                "University Notifications",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const Divider(height: 20),
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  itemCount: _notifications.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (_, index) {
+                    final item = _notifications[index];
+                    return ListTile(
+                      leading: const Icon(
+                        Icons.notifications_active_outlined,
+                        color: Color(0xFF003366),
+                      ),
+                      title: Text(item.title),
+                      subtitle: Text("${item.message}\n${_relativeTime(item.receivedAt)}"),
+                      isThreeLine: true,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _relativeTime(DateTime timestamp) {
+    final diff = DateTime.now().difference(timestamp);
+    if (diff.inMinutes < 1) return "Just now";
+    if (diff.inMinutes < 60) return "${diff.inMinutes}m ago";
+    if (diff.inHours < 24) return "${diff.inHours}h ago";
+    return "${diff.inDays}d ago";
   }
 
   List<_DashboardItem> _dashboardItems(BuildContext context) {
@@ -205,25 +277,55 @@ class _DashboardTabState extends State<DashboardTab> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              TextField(
-                controller: _searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: "serach here",
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: query.isEmpty
-                      ? null
-                      : IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {});
-                          },
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        hintText: "serach here",
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: query.isEmpty
+                            ? null
+                            : IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {});
+                                },
+                              ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Material(
+                        color: const Color(0xFFE8EEF5),
+                        borderRadius: BorderRadius.circular(12),
+                        child: IconButton(
+                          tooltip: "Notifications",
+                          onPressed: _openNotificationsSheet,
+                          icon: const Icon(
+                            Icons.notifications_none_rounded,
+                            color: Color(0xFF003366),
+                          ),
+                        ),
+                      ),
+                      if (_hasUnreadNotifications)
+                        const Positioned(
+                          right: 6,
+                          top: 6,
+                          child: _NotificationDot(),
+                        ),
+                    ],
+                  ),
+                ],
               ),
               if (suggestions.isNotEmpty) ...[
                 const SizedBox(height: 8),
@@ -295,6 +397,22 @@ class _DashboardTabState extends State<DashboardTab> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _NotificationDot extends StatelessWidget {
+  const _NotificationDot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        color: Colors.red,
+        borderRadius: BorderRadius.circular(999),
+      ),
     );
   }
 }
@@ -767,6 +885,7 @@ class _HostelBlockTile extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _PlacementCellPage extends StatelessWidget {
   final Student student;
 
