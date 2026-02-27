@@ -796,10 +796,10 @@ class _HostelMessPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: const [
           Text(
-            "Hostel Blocks",
+            "Campus Hostel Blocks",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 10),
+          SizedBox(height: 25),
           _HostelBlockTile(
             name: "SPM Boys Hostel",
             subtitle: "Boys Hostel Block",
@@ -812,7 +812,7 @@ class _HostelMessPage extends StatelessWidget {
           _HostelBlockTile(
             name: "BRS Boys Hostel",
             subtitle: "Boys Hostel Block",
-            icon: Icons.home_work_rounded,
+            icon: Icons.apartment_rounded,
             backgroundColor: Color(0xFFE8F5E9),
             iconColor: Color(0xFF2E7D32),
             hostelBlock: HostelBlock.brsBoys,
@@ -821,12 +821,12 @@ class _HostelMessPage extends StatelessWidget {
           _HostelBlockTile(
             name: "Shailputri Girls Hostel",
             subtitle: "Girls Hostel Block",
-            icon: Icons.house_rounded,
+            icon: Icons.apartment_rounded,
             backgroundColor: Color(0xFFFCE4EC),
             iconColor: Color(0xFFAD1457),
             hostelBlock: HostelBlock.shailputriGirls,
           ),
-          SizedBox(height: 12),
+          SizedBox(height: 20),
           Text(
             "Mess Services",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -838,15 +838,6 @@ class _HostelMessPage extends StatelessWidget {
               title: Text("Mess Menu"),
               subtitle: Text(
                 "Check breakfast/lunch/dinner schedule and special meal notices.",
-              ),
-            ),
-          ),
-          Card(
-            child: ListTile(
-              leading: Icon(Icons.report_gmailerrorred, color: Colors.red),
-              title: Text("Hostel Complaint"),
-              subtitle: Text(
-                "Use Help section to submit water, electricity, or sanitation issues.",
               ),
             ),
           ),

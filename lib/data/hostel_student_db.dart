@@ -130,7 +130,7 @@ class HostelStudent {
       phoneNumber: json["phoneNumber"] as String? ?? "Not Available",
       email:
           json["email"] as String? ??
-          "${enrollmentNumber.toLowerCase()}@student.cujammu.ac.in",
+          "${enrollmentNumber.toLowerCase()}.ccs@cujammu.ac.in",
       department:
           json["department"] as String? ?? "B.Tech CSE Cybersecurity",
       academicYear: json["academicYear"] as String? ?? "1st Year",
@@ -255,10 +255,10 @@ const HostelStudent _developmentStudentSeed = HostelStudent(
   enrollmentNumber: "24BECCS25",
   password: "Kush@7511",
   name: "Kush Kumar",
-  roomNumber: "Dev-Room-01",
+  roomNumber: "S-46",
   fatherName: "Naresh Chand",
   phoneNumber: "9541232575",
-  email: "24beccs25@student.cujammu.ac.in",
+  email: "24beccs25.ccs@cujammu.ac.in",
   department: "B.Tech CSE Cybersecurity",
   academicYear: "2nd Year",
   guardianContact: "9541232575",
