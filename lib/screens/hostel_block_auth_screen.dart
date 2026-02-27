@@ -1,5 +1,5 @@
 import 'dart:convert';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -444,6 +444,7 @@ class _HostelComplainTab extends StatefulWidget {
 
 class _HostelComplainTabState extends State<_HostelComplainTab>
     with SingleTickerProviderStateMixin {
+
   late final TabController _tabController;
   final _formKey = GlobalKey<FormState>();
   final _detailsCtrl = TextEditingController();
@@ -463,71 +464,55 @@ class _HostelComplainTabState extends State<_HostelComplainTab>
     super.dispose();
   }
 
-  String _dateText(DateTime date) {
-    return "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
-  }
-
   Future<void> _submitComplaint() async {
     if (_submitting) return;
-    final form = _formKey.currentState;
-    if (form == null || !form.validate()) return;
 
-    setState(() {
-      _submitting = true;
-    });
+    if (!_formKey.currentState!.validate()) return;
 
-    final updated = await submitHostelComplaint(
-      block: widget.hostelBlock,
-      enrollmentNumber: widget.student.enrollmentNumber,
-      complaint: HostelComplaint(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        category: _category,
-        details: _detailsCtrl.text.trim(),
-        reportedOn: DateTime.now(),
-        status: "Pending",
-      ),
-    );
+    setState(() => _submitting = true);
 
-    if (!mounted) return;
-    setState(() {
-      _submitting = false;
-    });
-    if (updated == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Unable to submit complaint.")),
-      );
-      return;
-    }
-    widget.onStudentUpdated(updated);
-    _formKey.currentState?.reset();
-    setState(() {
-      _category = "Electricity";
+    try {
+      await FirebaseFirestore.instance
+          .collection('hostel_complaints')
+          .add({
+        "studentName": widget.student.name,
+        "rollNumber": widget.student.enrollmentNumber,
+        "roomNumber": widget.student.roomNumber,
+        "block": widget.hostelBlock.displayName,
+        "category": _category,
+        "description": _detailsCtrl.text.trim(),
+        "status": "Pending",
+        "createdAt": FieldValue.serverTimestamp(),
+        "updatedAt": FieldValue.serverTimestamp(),
+      });
+
       _detailsCtrl.clear();
-    });
-    _tabController.animateTo(1);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Complaint submitted.")));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Complaint submitted successfully")),
+      );
+
+      _tabController.animateTo(1);
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    }
+
+    setState(() => _submitting = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    final complaints = widget.student.complaints;
     return Column(
       children: [
         Material(
-          color: Theme.of(context).scaffoldBackgroundColor,
           child: TabBar(
             controller: _tabController,
             tabs: const [
-              Tab(
-                icon: Icon(Icons.edit_note_outlined),
-                text: "Raise Complaint",
-              ),
-              Tab(
-                icon: Icon(Icons.track_changes_outlined),
-                text: "Track Status",
-              ),
+              Tab(icon: Icon(Icons.edit_note_outlined), text: "Raise Complaint"),
+              Tab(icon: Icon(Icons.track_changes_outlined), text: "Track Status"),
             ],
           ),
         ),
@@ -535,6 +520,8 @@ class _HostelComplainTabState extends State<_HostelComplainTab>
           child: TabBarView(
             controller: _tabController,
             children: [
+
+              /// ------------------ RAISE COMPLAINT ------------------
               ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
@@ -542,6 +529,7 @@ class _HostelComplainTabState extends State<_HostelComplainTab>
                     key: _formKey,
                     child: Column(
                       children: [
+
                         DropdownButtonFormField<String>(
                           initialValue: _category,
                           decoration: const InputDecoration(
@@ -549,25 +537,18 @@ class _HostelComplainTabState extends State<_HostelComplainTab>
                             border: OutlineInputBorder(),
                           ),
                           items: const [
-                            DropdownMenuItem(
-                              value: "Electricity",
-                              child: Text("Electricity"),
-                            ),
+                            DropdownMenuItem(value: "Electricity", child: Text("Electricity")),
                             DropdownMenuItem(value: "Water", child: Text("Water")),
                             DropdownMenuItem(value: "WiFi", child: Text("WiFi")),
-                            DropdownMenuItem(
-                              value: "Sanitation",
-                              child: Text("Sanitation"),
-                            ),
+                            DropdownMenuItem(value: "Sanitation", child: Text("Sanitation")),
                           ],
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() {
-                              _category = value;
-                            });
+                          onChanged: (val) {
+                            if (val != null) setState(() => _category = val);
                           },
                         ),
+
                         const SizedBox(height: 12),
+
                         TextFormField(
                           controller: _detailsCtrl,
                           minLines: 3,
@@ -575,24 +556,23 @@ class _HostelComplainTabState extends State<_HostelComplainTab>
                           decoration: const InputDecoration(
                             labelText: "Describe the issue",
                             border: OutlineInputBorder(),
-                            hintText:
-                                "Write room/block details and issue description.",
                           ),
-                          validator: (value) => value == null || value.trim().isEmpty
-                              ? "Complaint details are required"
-                              : null,
+                          validator: (val) =>
+                              val == null || val.isEmpty
+                                  ? "Details required"
+                                  : null,
                         ),
-                        const SizedBox(height: 14),
+
+                        const SizedBox(height: 16),
+
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton.icon(
                             onPressed: _submitting ? null : _submitComplaint,
-                            icon: const Icon(Icons.send_outlined),
-                            label: Text(
-                              _submitting
-                                  ? "Submitting..."
-                                  : "Submit Complaint",
-                            ),
+                            icon: const Icon(Icons.send),
+                            label: Text(_submitting
+                                ? "Submitting..."
+                                : "Submit Complaint"),
                           ),
                         ),
                       ],
@@ -600,45 +580,90 @@ class _HostelComplainTabState extends State<_HostelComplainTab>
                   ),
                 ],
               ),
-              complaints.isEmpty
-                  ? const Center(
-                      child: Text(
-                        "No complaints submitted yet.",
-                        style: TextStyle(color: Colors.black54),
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: complaints.length,
-                      itemBuilder: (_, index) {
-                        final complaint = complaints[index];
-                        final solved = complaint.status.toLowerCase() == "solved";
-                        return Card(
-                          child: ListTile(
-                            leading: Icon(
-                              solved ? Icons.check_circle : Icons.hourglass_top,
-                              color: solved ? Colors.green : Colors.orange,
-                            ),
-                            title: Text(complaint.category),
-                            subtitle: Text(
-                              "${complaint.details}\n"
-                              "Reported: ${_dateText(complaint.reportedOn)}\n"
-                              "Status: ${complaint.status}",
-                            ),
-                            isThreeLine: true,
+
+              /// ------------------ TRACK STATUS ------------------
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('hostel_complaints')
+                    .where('rollNumber',
+                        isEqualTo: widget.student.enrollmentNumber)
+                    .snapshots(),
+                builder: (context, snapshot) {
+
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final docs = snapshot.data!.docs;
+
+                  if (docs.isEmpty) {
+                    return const Center(
+                      child: Text("No complaints submitted yet."),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: docs.length,
+                    itemBuilder: (_, index) {
+                      final data = docs[index];
+                      final status = data['status'];
+
+Color statusColor;
+
+if (status == "Approved") {
+  statusColor = Colors.green;
+} else if (status == "Rejected") {
+  statusColor = Colors.red;
+} else if (status == "In Progress") {
+  statusColor = Colors.blue;
+} else {
+  statusColor = Colors.orange; // Pending
+}
+
+                      return Card(
+                        child: ListTile(
+                          leading: Icon(
+                            status == "Resolved"
+                                ? Icons.check_circle
+                                : status == "Rejected"
+                                    ? Icons.cancel
+                                    : Icons.hourglass_top,
+                            color: status == "Resolved"
+                                ? Colors.green
+                                : status == "Rejected"
+                                    ? Colors.red
+                                    : Colors.orange,
                           ),
-                        );
-                      },
-                    ),
+                          title: Text(data['category']),
+                          subtitle: Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Text(data['description']),
+    const SizedBox(height: 6),
+    Text(
+      "Status: $status",
+      style: TextStyle(
+        color: statusColor,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  ],
+),
+                          isThreeLine: true,
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ],
           ),
         ),
       ],
     );
   }
-}
-
-class _HostelLeaveTab extends StatefulWidget {
+}class _HostelLeaveTab extends StatefulWidget {
   final HostelStudent student;
   final HostelBlock hostelBlock;
   final ValueChanged<HostelStudent> onStudentUpdated;
@@ -655,12 +680,15 @@ class _HostelLeaveTab extends StatefulWidget {
 
 class _HostelLeaveTabState extends State<_HostelLeaveTab>
     with SingleTickerProviderStateMixin {
+
   late final TabController _tabController;
   final _formKey = GlobalKey<FormState>();
+
   final _reasonCtrl = TextEditingController();
   final _destinationCtrl = TextEditingController();
   final _guardianCtrl = TextEditingController();
   final _emergencyCtrl = TextEditingController();
+
   String _leaveType = "Day Leave";
   DateTime? _fromDate;
   DateTime? _toDate;
@@ -682,128 +710,101 @@ class _HostelLeaveTabState extends State<_HostelLeaveTab>
     super.dispose();
   }
 
-  Future<void> _pickDate({required bool isFromDate}) async {
-    final initial = isFromDate
-        ? (_fromDate ?? DateTime.now())
-        : (_toDate ?? _fromDate ?? DateTime.now());
+  Future<void> _pickDate(bool isFrom) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: initial,
+      initialDate: DateTime.now(),
       firstDate: DateTime.now().subtract(const Duration(days: 1)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
+
     if (picked == null) return;
+
     setState(() {
-      if (isFromDate) {
+      if (isFrom) {
         _fromDate = picked;
-        if (_toDate != null && _toDate!.isBefore(picked)) {
-          _toDate = picked;
-        }
       } else {
         _toDate = picked;
       }
     });
   }
 
-  String _dateText(DateTime? date) {
-    if (date == null) return "Select Date";
-    return "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
-  }
-
   Future<void> _submitLeave() async {
-    if (_submitting) return;
-    final form = _formKey.currentState;
-    if (form == null || !form.validate()) return;
+    if (!_formKey.currentState!.validate()) return;
+
     if (_fromDate == null || _toDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select from and to dates.")),
+        const SnackBar(content: Text("Select from and to dates")),
       );
       return;
     }
-    if (_toDate!.isBefore(_fromDate!)) {
+
+    setState(() => _submitting = true);
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('hostel_leave_applications')
+          .add({
+        "studentName": widget.student.name,
+        "rollNumber": widget.student.enrollmentNumber,
+        "roomNumber": widget.student.roomNumber,
+        "block": widget.hostelBlock.displayName,
+        "leaveType": _leaveType,
+        "fromDate": _fromDate,
+        "toDate": _toDate,
+        "reason": _reasonCtrl.text.trim(),
+        "destination": _destinationCtrl.text.trim(),
+        "guardianContact": _guardianCtrl.text.trim(),
+        "emergencyContact": _emergencyCtrl.text.trim(),
+        "status": "Pending",
+        "createdAt": FieldValue.serverTimestamp(),
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("To date cannot be before from date.")),
+        const SnackBar(content: Text("Leave application submitted")),
       );
-      return;
-    }
 
-    setState(() {
-      _submitting = true;
-    });
-
-    final application = HostelLeaveApplication(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      leaveType: _leaveType,
-      fromDate: _fromDate!,
-      toDate: _toDate!,
-      reason: _reasonCtrl.text.trim(),
-      destination: _destinationCtrl.text.trim(),
-      guardianContact: _guardianCtrl.text.trim(),
-      emergencyContact: _emergencyCtrl.text.trim(),
-      appliedOn: DateTime.now(),
-      status: "Pending",
-    );
-
-    final updated = await submitHostelLeaveApplication(
-      block: widget.hostelBlock,
-      enrollmentNumber: widget.student.enrollmentNumber,
-      application: application,
-    );
-
-    if (!mounted) return;
-    setState(() {
-      _submitting = false;
-    });
-
-    if (updated == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Unable to submit leave application.")),
-      );
-      return;
-    }
-
-    widget.onStudentUpdated(updated);
-    _formKey.currentState?.reset();
-    setState(() {
-      _leaveType = "Day Leave";
-      _fromDate = null;
-      _toDate = null;
+      _formKey.currentState!.reset();
       _reasonCtrl.clear();
       _destinationCtrl.clear();
       _guardianCtrl.clear();
       _emergencyCtrl.clear();
-    });
-    _tabController.animateTo(1);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Leave application submitted.")),
-    );
+      _fromDate = null;
+      _toDate = null;
+
+      _tabController.animateTo(1);
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    }
+
+    setState(() => _submitting = false);
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return "Select Date";
+    return "${date.day}/${date.month}/${date.year}";
   }
 
   @override
   Widget build(BuildContext context) {
-    final leaves = widget.student.leaveApplications;
     return Column(
       children: [
-        Material(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          child: TabBar(
-            controller: _tabController,
-            tabs: const [
-              Tab(
-                icon: Icon(Icons.assignment_turned_in_outlined),
-                text: "Apply for Leave",
-              ),
-              Tab(
-                icon: Icon(Icons.history_toggle_off_outlined),
-                text: "Leave History",
-              ),
-            ],
-          ),
+        TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: "Apply Leave"),
+            Tab(text: "Leave History"),
+          ],
         ),
         Expanded(
           child: TabBarView(
             controller: _tabController,
             children: [
+
+              /// ---------------- APPLY LEAVE FORM ----------------
               ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
@@ -811,120 +812,78 @@ class _HostelLeaveTabState extends State<_HostelLeaveTab>
                     key: _formKey,
                     child: Column(
                       children: [
+
                         DropdownButtonFormField<String>(
-                          initialValue: _leaveType,
+                          value: _leaveType,
                           decoration: const InputDecoration(
                             labelText: "Leave Type",
                             border: OutlineInputBorder(),
                           ),
                           items: const [
                             DropdownMenuItem(
-                              value: "Day Leave",
-                              child: Text("Day Leave"),
-                            ),
+                                value: "Day Leave", child: Text("Day Leave")),
                             DropdownMenuItem(
-                              value: "Overnight Leave",
-                              child: Text("Overnight Leave"),
-                            ),
+                                value: "Overnight Leave",
+                                child: Text("Overnight Leave")),
                             DropdownMenuItem(
-                              value: "Medical Leave",
-                              child: Text("Medical Leave"),
-                            ),
-                            DropdownMenuItem(
-                              value: "Emergency Leave",
-                              child: Text("Emergency Leave"),
-                            ),
+                                value: "Medical Leave",
+                                child: Text("Medical Leave")),
                           ],
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() {
-                              _leaveType = value;
-                            });
-                          },
+                          onChanged: (val) =>
+                              setState(() => _leaveType = val!),
                         ),
+
                         const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => _pickDate(isFromDate: true),
-                                icon: const Icon(Icons.event_available_outlined),
-                                label: Text("From: ${_dateText(_fromDate)}"),
-                              ),
-                            ),
-                          ],
+
+                        OutlinedButton(
+                          onPressed: () => _pickDate(true),
+                          child: Text("From: ${_formatDate(_fromDate)}"),
                         ),
+
                         const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => _pickDate(isFromDate: false),
-                                icon: const Icon(Icons.event_outlined),
-                                label: Text("To: ${_dateText(_toDate)}"),
-                              ),
-                            ),
-                          ],
+
+                        OutlinedButton(
+                          onPressed: () => _pickDate(false),
+                          child: Text("To: ${_formatDate(_toDate)}"),
                         ),
+
                         const SizedBox(height: 12),
+
                         TextFormField(
                           controller: _reasonCtrl,
-                          minLines: 2,
-                          maxLines: 4,
                           decoration: const InputDecoration(
-                            labelText: "Reason for Leave",
+                            labelText: "Reason",
                             border: OutlineInputBorder(),
                           ),
-                          validator: (value) => value == null || value.trim().isEmpty
-                              ? "Reason is required"
-                              : null,
+                          validator: (val) =>
+                              val == null || val.isEmpty
+                                  ? "Reason required"
+                                  : null,
                         ),
+
                         const SizedBox(height: 12),
+
                         TextFormField(
                           controller: _destinationCtrl,
                           decoration: const InputDecoration(
-                            labelText: "Destination / Address During Leave",
+                            labelText: "Destination",
                             border: OutlineInputBorder(),
                           ),
-                          validator: (value) => value == null || value.trim().isEmpty
-                              ? "Destination is required"
-                              : null,
+                          validator: (val) =>
+                              val == null || val.isEmpty
+                                  ? "Destination required"
+                                  : null,
                         ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _guardianCtrl,
-                          keyboardType: TextInputType.phone,
-                          decoration: const InputDecoration(
-                            labelText: "Parent/Guardian Contact Number",
-                            border: OutlineInputBorder(),
-                          ),
-                          validator: (value) => value == null || value.trim().isEmpty
-                              ? "Guardian contact is required"
-                              : null,
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _emergencyCtrl,
-                          keyboardType: TextInputType.phone,
-                          decoration: const InputDecoration(
-                            labelText: "Emergency Contact Number",
-                            border: OutlineInputBorder(),
-                          ),
-                          validator: (value) => value == null || value.trim().isEmpty
-                              ? "Emergency contact is required"
-                              : null,
-                        ),
+
                         const SizedBox(height: 16),
+
                         SizedBox(
                           width: double.infinity,
-                          child: FilledButton.icon(
+                          child: FilledButton(
                             onPressed: _submitting ? null : _submitLeave,
-                            icon: const Icon(Icons.send_outlined),
-                            label: Text(
-                              _submitting
-                                  ? "Submitting..."
-                                  : "Submit Leave Application",
-                            ),
+                            child: Text(_submitting
+                                ? "Submitting..."
+                                : "Submit Leave"),
                           ),
                         ),
                       ],
@@ -932,43 +891,64 @@ class _HostelLeaveTabState extends State<_HostelLeaveTab>
                   ),
                 ],
               ),
-              leaves.isEmpty
-                  ? const Center(
-                      child: Text(
-                        "No leave applications found.",
-                        style: TextStyle(color: Colors.black54),
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: leaves.length,
-                      itemBuilder: (_, index) {
-                        final leave = leaves[index];
-                        return Card(
-                          child: ListTile(
-                            leading: Icon(
-                              leave.status == "Approved"
-                                  ? Icons.check_circle
-                                  : leave.status == "Rejected"
-                                      ? Icons.cancel
-                                      : Icons.hourglass_top,
-                              color: leave.status == "Approved"
-                                  ? Colors.green
-                                  : leave.status == "Rejected"
-                                      ? Colors.red
-                                      : Colors.orange,
-                            ),
-                            title: Text(leave.leaveType),
-                            subtitle: Text(
-                              "${_dateText(leave.fromDate)} - ${_dateText(leave.toDate)}\n"
-                              "Status: ${leave.status}\n"
-                              "Reason: ${leave.reason}",
-                            ),
-                            isThreeLine: true,
-                          ),
-                        );
-                      },
-                    ),
+
+              /// ---------------- LEAVE HISTORY ----------------
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('hostel_leave_applications')
+                    .where('rollNumber',
+                        isEqualTo: widget.student.enrollmentNumber)
+                    .snapshots(),
+                builder: (context, snapshot) {
+
+                  if (snapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(
+                        child: CircularProgressIndicator());
+                  }
+
+                  if (!snapshot.hasData ||
+                      snapshot.data!.docs.isEmpty) {
+                    return const Center(
+                      child: Text("No leave applications found."),
+                    );
+                  }
+
+                  final docs = snapshot.data!.docs;
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: docs.length,
+                    itemBuilder: (_, index) {
+                      final data = docs[index];
+                      return Card(
+                        child: ListTile(
+                          title: Text(data['leaveType'] ?? "Leave"),
+                          subtitle: Builder(builder: (context) {
+                            final status = data['status'] ?? "Pending";
+                            Color statusColor = Colors.orange;
+                            if (status == "Approved") statusColor = Colors.green;
+                            if (status == "Rejected") statusColor = Colors.red;
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text("From: ${data['fromDate']?.toDate() ?? ''}"),
+                                Text("To: ${data['toDate']?.toDate() ?? ''}"),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Status: $status",
+                                  style: TextStyle(color: statusColor, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            );
+                          }),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -976,7 +956,6 @@ class _HostelLeaveTabState extends State<_HostelLeaveTab>
     );
   }
 }
-
 class _HostelProfileTab extends StatefulWidget {
   final HostelStudent student;
   final HostelBlock hostelBlock;

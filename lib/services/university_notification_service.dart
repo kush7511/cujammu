@@ -3,17 +3,15 @@ import 'dart:convert';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'notification_backend_service.dart';
-
-
 
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await UniversityNotificationService.instance.initialize();
   await UniversityNotificationService.instance.storeRemoteMessage(message);
 }
-
 
 class UniversityNotification {
   final String id;
@@ -47,12 +45,12 @@ class UniversityNotification {
   }
 
   Map<String, dynamic> toJson() => {
-    "id": id,
-    "title": title,
-    "message": message,
-    "receivedAt": receivedAt.toIso8601String(),
-    "isRead": isRead,
-  };
+        "id": id,
+        "title": title,
+        "message": message,
+        "receivedAt": receivedAt.toIso8601String(),
+        "isRead": isRead,
+      };
 
   factory UniversityNotification.fromJson(Map<String, dynamic> json) {
     return UniversityNotification(
@@ -68,9 +66,10 @@ class UniversityNotification {
 class UniversityNotificationService {
   UniversityNotificationService._();
 
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   static final UniversityNotificationService instance =
       UniversityNotificationService._();
+
+  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
   static const String _notificationsKey = "university_notifications_v1";
   static const int _maxNotifications = 200;
@@ -82,10 +81,15 @@ class UniversityNotificationService {
   bool _initialized = false;
 
   List<UniversityNotification> get notifications =>
-      List<UniversityNotification>.unmodifiable(_notifications);
+      List.unmodifiable(_notifications);
 
   Stream<List<UniversityNotification>> get notificationsStream =>
       _streamController.stream;
+
+  int get unreadCount =>
+      _notifications.where((e) => !e.isRead).length;
+
+  /// ---------------- INITIALIZE ----------------
 
   Future<void> initialize({String? userRoll}) async {
     if (_initialized) return;
@@ -94,11 +98,13 @@ class UniversityNotificationService {
     await _loadStoredNotifications();
 
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
     await _messaging.requestPermission(
       alert: true,
       badge: true,
       sound: true,
     );
+
     await _registerToken(userRoll: userRoll);
 
     FirebaseMessaging.onMessage.listen((message) async {
@@ -109,7 +115,7 @@ class UniversityNotificationService {
       await storeRemoteMessage(message);
     });
 
-    final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    final initialMessage = await _messaging.getInitialMessage();
     if (initialMessage != null) {
       await storeRemoteMessage(initialMessage);
     }
@@ -119,64 +125,46 @@ class UniversityNotificationService {
 
   Future<void> _initializeFirebase() async {
     if (Firebase.apps.isNotEmpty) return;
+    await Firebase.initializeApp();
+  }
+
+  Future<void> _registerToken({String? userRoll}) async {
     try {
-      await Firebase.initializeApp();
+      final token = await _messaging.getToken();
+      if (token == null || token.trim().isEmpty) return;
+
+      await NotificationBackendService.registerDeviceToken(
+        token: token,
+        userRoll: userRoll,
+      );
+
+      _messaging.onTokenRefresh.listen((newToken) {
+        print("🔄 Token refreshed: $newToken");
+      });
     } catch (e) {
-      print("Token registration failed: $e");
-      // App should continue even if Firebase init fails.
+      print("Token registration error: $e");
     }
   }
 
- Future<void> _registerToken({String? userRoll}) async {
-  try {
-    final token = await FirebaseMessaging.instance.getToken();
-
-    print("🔥 RAW TOKEN: $token");
-
-    if (token == null || token.trim().isEmpty) {
-      print("⚠ Token is null or empty");
-      return;
-    }
-
-    print("📡 Registering token to backend...");
-
-    await NotificationBackendService.registerDeviceToken(
-      token: token,
-      userRoll: userRoll,
-    );
-
-    print("✅ Token registered successfully");
-
-    _messaging.onTokenRefresh.listen((newToken) {
-      print("🔄 FCM Token refreshed: $newToken");
-    });
-
-  } catch (e) {
-    print("❌ Token registration error: $e");
-  }
-}
+  /// ---------------- LOCAL STORAGE ----------------
 
   Future<void> _loadStoredNotifications() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_notificationsKey);
-    if (raw == null || raw.trim().isEmpty) {
+
+    if (raw == null || raw.isEmpty) {
       _streamController.add(notifications);
       return;
     }
-    try {
-      final parsed = jsonDecode(raw);
-      if (parsed is! List) return;
-      _notifications = parsed
-          .whereType<Map>()
-          .map(
-            (e) => UniversityNotification.fromJson(Map<String, dynamic>.from(e)),
-          )
-          .toList();
-      _notifications.sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
-      _streamController.add(notifications);
-    } catch (_) {
-      // Ignore malformed cache.
-    }
+
+    final parsed = jsonDecode(raw);
+    _notifications = (parsed as List)
+        .map((e) =>
+            UniversityNotification.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+
+    _notifications.sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
+    _streamController.add(notifications);
   }
 
   Future<void> _persist() async {
@@ -188,17 +176,19 @@ class UniversityNotificationService {
     _streamController.add(notifications);
   }
 
+  /// ---------------- STORE NEW NOTIFICATION ----------------
+
   Future<void> storeRemoteMessage(RemoteMessage remoteMessage) async {
-    final title =
-        remoteMessage.notification?.title ??
-        (remoteMessage.data["title"]?.toString() ?? "University Update");
-    final message =
-        remoteMessage.notification?.body ??
-        (remoteMessage.data["body"]?.toString() ?? "New update received.");
+    final title = remoteMessage.notification?.title ??
+        remoteMessage.data["title"]?.toString() ??
+        "University Update";
+
+    final message = remoteMessage.notification?.body ??
+        remoteMessage.data["body"]?.toString() ??
+        "New update received.";
 
     final notification = UniversityNotification(
-      id:
-          remoteMessage.messageId ??
+      id: remoteMessage.messageId ??
           DateTime.now().microsecondsSinceEpoch.toString(),
       title: title,
       message: message,
@@ -207,9 +197,11 @@ class UniversityNotificationService {
     );
 
     _notifications = [notification, ..._notifications];
+
     if (_notifications.length > _maxNotifications) {
       _notifications = _notifications.take(_maxNotifications).toList();
     }
+
     await _persist();
   }
 
@@ -224,12 +216,26 @@ class UniversityNotificationService {
       receivedAt: DateTime.now(),
       isRead: false,
     );
+
     _notifications = [notification, ..._notifications];
     await _persist();
   }
 
+  /// ---------------- ACTION METHODS ----------------
+
+  Future<void> deleteNotification(String id) async {
+    _notifications.removeWhere((e) => e.id == id);
+    await _persist();
+  }
+
+  Future<void> clearAllNotifications() async {
+    _notifications.clear();
+    await _persist();
+  }
+
   Future<void> markAllAsRead() async {
-    _notifications = _notifications.map((e) => e.copyWith(isRead: true)).toList();
+    _notifications =
+        _notifications.map((e) => e.copyWith(isRead: true)).toList();
     await _persist();
   }
 }
