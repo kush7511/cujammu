@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'package:cuj/screens/admit_card_page.dart';
 import 'package:cuj/screens/in_app_webview_page.dart';
 import 'package:cuj/screens/hostel_block_auth_screen.dart';
 import 'package:cuj/screens/chatbot/cuj_chatbot_sheet.dart';
 import 'package:cuj/screens/timetable_page.dart';
 import 'package:cuj/screens/transport_page.dart';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:local_auth/local_auth.dart';
@@ -426,22 +428,40 @@ class _ExamCenterPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final upcomingExams = <Map<String, String>>[
       {
-        "subject": "Software Engineering",
-        "date": "15 Apr 2026",
-        "time": "10:00 AM - 1:00 PM",
-        "venue": "Block A, Room 204",
+        "subject": "DBMS",
+        "date": "15 Feb 2026",
+        "time": "10:30 AM - 12:30 PM",
+        "venue": "Fabricated Block, Room 1",
       },
       {
-        "subject": "DBMS",
-        "date": "18 Apr 2026",
-        "time": "2:00 PM - 5:00 PM",
-        "venue": "Block B, Room 110",
+        "subject": "Machine Learning",
+        "date": "15 Feb 2026",
+        "time": "2:00 PM - 4:00 PM",
+        "venue": "Fabricated Block, Room 1",
       },
       {
         "subject": "Operating Systems",
-        "date": "22 Apr 2026",
-        "time": "10:00 AM - 1:00 PM",
-        "venue": "Block C, Room 303",
+        "date": "16 Feb 2026",
+        "time": "10:30 AM - 12:30 PM",
+        "venue": "Fabricated Block, Room 1",
+      },
+      {
+        "subject": "Software Engineering",
+        "date": "16 Feb 2026",
+        "time": "2:00 PM - 4:00 PM",
+        "venue": "Fabricated Block, Room 1",
+      },
+      {
+        "subject": "Digital Electronics",
+        "date": "22 Feb 2026",
+        "time": "10:30 AM - 12:30 PM",
+        "venue": "Fabricated Block, Room 1",
+      },
+      {
+        "subject": "java Programming",
+        "date": "22 Feb 2026",
+        "time": "2:00 PM - 4:00 PM",
+        "venue": "Fabricated Block, Room 1",
       },
     ];
 
@@ -522,12 +542,36 @@ class _ExamCenterPage extends StatelessWidget {
                 },
               ),
               _ExamActionChip(
+                label: "Admit Cards",
+                 icon: Icons.menu_book_rounded,
+                 onTap: () {
+                          Navigator.push(
+                          context,
+                            MaterialPageRoute(
+                                 builder: (_) => AdmitCardPage(student: student),
+                            ),
+                           );
+                           },
+                          ),
+              _ExamActionChip(label: "Syllabus", 
+              icon: Icons.menu_book, 
+              onTap:() {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Opening Syllabus...")),
+                );
+              },
+              ),
+              _ExamActionChip(
                 label: "Result Portal",
                 icon: Icons.assessment,
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Open Results tab from the side menu."),
+                 Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const InAppWebViewPage(
+                        title: "Exam Results",
+                        url: "https://www.cujammu.ac.in/en/Results/",
+                      ),
                     ),
                   );
                 },
