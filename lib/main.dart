@@ -4,14 +4,11 @@ import 'package:flutter/services.dart';
 import 'dart:async';
 import 'screens/login_screen.dart';
 import 'services/app_settings_service.dart';
-import 'services/university_notification_service.dart';
-
+import 'firebase_options.dart'; // Ensure this file contains DefaultFirebaseOptions
 
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  await UniversityNotificationService.instance.initialize();
   runApp(const CUJApp());
 }
 
@@ -75,27 +72,44 @@ class _CUJAppState extends State<CUJApp> {
 
   @override
   Widget build(BuildContext context) {
+    return FutureBuilder(
+  future: Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  ),
+  builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const MaterialApp(
+        home: Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    if (snapshot.hasError) {
+      return MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Text(
+              "Firebase Error: ${snapshot.error}",
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
     return MaterialApp(
       title: 'CU Jammu',
       debugShowCheckedModeBanner: false,
-      themeMode: _settings.darkModeEnabled ? ThemeMode.dark : ThemeMode.light,
+      themeMode:
+          _settings.darkModeEnabled ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
         primaryColor: const Color(0xFF003366),
         useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF003366),
-          foregroundColor: Colors.white,
-          centerTitle: true,
-        ),
       ),
       darkTheme: ThemeData(
         brightness: Brightness.dark,
         useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF001A33),
-          foregroundColor: Colors.white,
-          centerTitle: true,
-        ),
       ),
       home: !_splashDone
           ? _WelcomeSplashScreen(
@@ -115,6 +129,8 @@ class _CUJAppState extends State<CUJApp> {
                   onBiometricLoginChanged: _setBiometricLoginEnabled,
                 ),
     );
+  },
+);
   }
 }
 
