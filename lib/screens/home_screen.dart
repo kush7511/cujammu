@@ -1,4 +1,5 @@
 import 'package:cuj/screens/login_screen.dart';
+import 'package:cuj/screens/tabs/tech_support.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -732,8 +733,9 @@ class HelpTab extends StatelessWidget {
               subtitle: const Text("App related problems"),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Contacting Technical Team...")),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const TechSupport(studentName: '', enrollmentNumber: '',)),
                 );
               },
             ),

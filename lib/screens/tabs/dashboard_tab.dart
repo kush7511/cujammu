@@ -5,6 +5,7 @@ import 'package:cuj/screens/in_app_webview_page.dart';
 import 'package:cuj/screens/hostel_block_auth_screen.dart';
 import 'package:cuj/screens/timetable_page.dart';
 import 'package:cuj/screens/transport_page.dart';
+import 'cuj_radio_page.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -226,6 +227,17 @@ class _DashboardTabState extends State<DashboardTab> {
                 url: "https://www.cujammu.ac.in/en/placements/",
               ),
             ),
+          );
+        },
+      ),
+      _DashboardItem(
+        title: "CUJ Radio",
+        icon: Icons.radio,
+        color: Colors.pink,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const CujRadioPage()),
           );
         },
       ),
