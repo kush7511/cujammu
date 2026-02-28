@@ -41,6 +41,7 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
     });
     _scrollToBottom();
 
+    
     try {
       final reply = await _chatService.ask(
         _messages
@@ -48,6 +49,7 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
             .map((m) => _ChatTurn(role: m.role.name, text: m.text))
             .toList(),
       );
+      
       if (!mounted) return;
       setState(() {
         _messages.add(_ChatMessage(text: reply, role: _MessageRole.assistant));
@@ -229,11 +231,9 @@ class _ChatTurn {
 class _CujAiChatService {
   static const String _apiKey = String.fromEnvironment("GEMINI_API_KEY");
   static const String _apiBase = "https://generativelanguage.googleapis.com";
-  static const List<String> _preferredModels = <String>[
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-1.5-flash-latest",
-  ];
+ static const List<String> _preferredModels = <String>[
+  "gemini-1.5-flash",
+];
   String? _resolvedModel;
 
   Future<String> ask(List<_ChatTurn> history) async {

@@ -12,6 +12,14 @@
             "webRoot": "${workspaceFolder}"
         },
         {
+            "name": "Flutter",
+            "request": "launch",
+            "type": "dart",
+            "args": [
+             "--dart-define=GEMINI_API_KEY=YOUR_REAL_KEY"
+          ]
+      },
+        {
             "name": "Attach to Chrome",
             "port": 9222,
             "request": "attach",
@@ -39,5 +47,6 @@
             "type": "dart",
             "flutterMode": "release"
         },
+        
     ]
 }

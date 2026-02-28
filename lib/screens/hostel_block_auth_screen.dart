@@ -814,7 +814,7 @@ class _HostelLeaveTabState extends State<_HostelLeaveTab>
                       children: [
 
                         DropdownButtonFormField<String>(
-                          value: _leaveType,
+                          initialValue: _leaveType,
                           decoration: const InputDecoration(
                             labelText: "Leave Type",
                             border: OutlineInputBorder(),
