@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:cuj/screens/admit_card_page.dart';
 import 'package:cuj/screens/in_app_webview_page.dart';
 import 'package:cuj/screens/hostel_block_auth_screen.dart';
-import 'package:cuj/screens/chatbot/cuj_chatbot_sheet.dart';
 import 'package:cuj/screens/timetable_page.dart';
 import 'package:cuj/screens/transport_page.dart';
 import 'dart:convert';
