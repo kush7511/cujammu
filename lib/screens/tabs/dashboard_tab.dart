@@ -65,9 +65,10 @@ class _DashboardTabState extends State<DashboardTab> {
             children: [
               const SizedBox(height: 10),
               const Text(
-                "University Notifications",
+                "Notifications",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
+                
               const Divider(height: 20),
               Expanded(
                 child: ListView.separated(
@@ -393,8 +394,8 @@ class _DashboardTabState extends State<DashboardTab> {
                 isScrollControlled: true,
                 useSafeArea: true,
                 builder: (_) =>
-                    const SizedBox(height: 580, child: CujChatbotSheet()),
-              );
+                    CujChatbotSheet(
+                    studentName: widget.student.name, enrollmentNumber: widget.student.roll),);
             },
           ),
         ),

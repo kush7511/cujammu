@@ -1,10 +1,18 @@
 import 'dart:convert';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class CujChatbotSheet extends StatefulWidget {
-  const CujChatbotSheet({super.key});
+  final String studentName;
+  final String enrollmentNumber;
+
+  const CujChatbotSheet({
+    super.key,
+    required this.studentName,
+    required this.enrollmentNumber,
+  });
+
 
   @override
   State<CujChatbotSheet> createState() => _CujChatbotSheetState();
@@ -54,6 +62,13 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
       setState(() {
         _messages.add(_ChatMessage(text: reply, role: _MessageRole.assistant));
       });
+      await FirebaseFirestore.instance.collection('chatbot_logs').add({
+  "studentName": widget.studentName,
+  "enrollmentNumber": widget.enrollmentNumber,
+  "question": userText,
+  "answer": reply,
+  "timestamp": FieldValue.serverTimestamp(),
+});
     } catch (error) {
       if (!mounted) return;
       setState(() {
