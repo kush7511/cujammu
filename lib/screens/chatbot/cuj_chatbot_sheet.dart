@@ -19,6 +19,7 @@ class CujChatbotSheet extends StatefulWidget {
 }
 
 class _CujChatbotSheetState extends State<CujChatbotSheet> {
+  
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<_ChatMessage> _messages = [
@@ -30,6 +31,7 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
   ];
   final _CujAiChatService _chatService = _CujAiChatService();
   bool _isLoading = false;
+  String? _conversationId;
 
   @override
   void dispose() {
@@ -37,63 +39,125 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
     _scrollController.dispose();
     super.dispose();
   }
+  Future<void> _deleteChat() async {
+  if (_conversationId != null) {
+    final messagesRef = FirebaseFirestore.instance
+        .collection('chat_conversations')
+        .doc(_conversationId)
+        .collection('messages');
+
+    final messages = await messagesRef.get();
+
+    for (var doc in messages.docs) {
+      await doc.reference.delete();
+    }
+
+    await FirebaseFirestore.instance
+        .collection('chat_conversations')
+        .doc(_conversationId)
+        .delete();
+  }
+
+  setState(() {
+    _messages.clear();
+    _messages.add(
+      const _ChatMessage(
+        text:
+            "Hi, I am CUJ Assistant. Ask me anything about Central University of Jammu.",
+        role: _MessageRole.assistant,
+      ),
+    );
+    _conversationId = null;
+  });
+}
 
   Future<void> _sendMessage() async {
-    final userText = _controller.text.trim();
-    if (userText.isEmpty || _isLoading) return;
+  final userText = _controller.text.trim();
+  if (userText.isEmpty || _isLoading) return;
+
+  setState(() {
+    _messages.add(_ChatMessage(text: userText, role: _MessageRole.user));
+    _isLoading = true;
+    _controller.clear();
+  });
+  _scrollToBottom();
+
+  try {
+    // Create conversation if first message
+    if (_conversationId == null) {
+      final doc = await FirebaseFirestore.instance
+          .collection('chat_conversations')
+          .add({
+        "studentName": widget.studentName,
+        "enrollmentNumber": widget.enrollmentNumber,
+        "createdAt": FieldValue.serverTimestamp(),
+        "lastUpdated": FieldValue.serverTimestamp(),
+      });
+
+      _conversationId = doc.id;
+    }
+
+    final reply = await _chatService.ask(
+      _messages
+          .where((m) => m.role != _MessageRole.system)
+          .map((m) => _ChatTurn(role: m.role.name, text: m.text))
+          .toList(),
+    );
+
+    if (!mounted) return;
 
     setState(() {
-      _messages.add(_ChatMessage(text: userText, role: _MessageRole.user));
-      _isLoading = true;
-      _controller.clear();
-    });
-    _scrollToBottom();
-
-    
-    try {
-      final reply = await _chatService.ask(
-        _messages
-            .where((m) => m.role != _MessageRole.system)
-            .map((m) => _ChatTurn(role: m.role.name, text: m.text))
-            .toList(),
+      _messages.add(
+        _ChatMessage(text: reply, role: _MessageRole.assistant),
       );
-      
-      if (!mounted) return;
-      setState(() {
-        _messages.add(_ChatMessage(text: reply, role: _MessageRole.assistant));
-      });
-      await FirebaseFirestore.instance.collection('chatbot_logs').add({
-  "studentName": widget.studentName,
-  "enrollmentNumber": widget.enrollmentNumber,
-  "question": userText,
-  "answer": reply,
-  "timestamp": FieldValue.serverTimestamp(),
-});
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _messages.add(
-          _ChatMessage(
-            text:
-                "I could not fetch the answer right now. Check internet and AI key setup.",
-            role: _MessageRole.system,
-          ),
-        );
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString().replaceFirst("Exception: ", "")),
+    });
+
+    // Save both user and bot message
+    final messagesRef = FirebaseFirestore.instance
+        .collection('chat_conversations')
+        .doc(_conversationId)
+        .collection('messages');
+
+    await messagesRef.add({
+      "sender": "user",
+      "text": userText,
+      "timestamp": FieldValue.serverTimestamp(),
+    });
+
+    await messagesRef.add({
+      "sender": "bot",
+      "text": reply,
+      "timestamp": FieldValue.serverTimestamp(),
+    });
+
+    await FirebaseFirestore.instance
+        .collection('chat_conversations')
+        .doc(_conversationId)
+        .update({
+      "lastUpdated": FieldValue.serverTimestamp(),
+    });
+
+  } catch (_) {
+    if (!mounted) return;
+
+    setState(() {
+      _messages.add(
+        const _ChatMessage(
+          text:
+              "I could not fetch the answer right now. Please check your internet connection.",
+          role: _MessageRole.system,
         ),
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-      _scrollToBottom();
+    });
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
     }
+    _scrollToBottom();
   }
+}
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -327,18 +391,27 @@ class _CujAiChatService {
             "Content-Type": "application/json",
           },
           body: jsonEncode({
-            "system_instruction": {
-              "parts": [
-                {
-                  "text":
-                      "You are CUJ AI assistant for the Central University of Jammu (CUJ). Only answer questions related to CUJ. Use official CUJ website information (https://www.cujammu.ac.in/) only. If asked anything outside CUJ or if official CUJ website data is unavailable, politely refuse and ask the user to check the CUJ official website.",
-                },
-              ],
-            },
-            "generationConfig": {
-              "maxOutputTokens": 350,
-              "temperature": 0.3,
-            },
+           "system_instruction": {
+  "parts": [
+    {
+      "text":
+          "You are CUJ AI Assistant for the Central University of Jammu (CUJ). "
+          "Provide detailed, well-structured, and professional answers of at least 200-300 words. "
+          "Start responses with a friendly and professional tone like: "
+          "'Certainly! Here is a detailed explanation regarding your query:' or similar natural openings. "
+          "Organize answers using short paragraphs and bullet points when helpful. "
+          "Explain clearly and completely. "
+          "Only answer questions related to Central University of Jammu (CUJ). "
+          "Use official CUJ website information (https://www.cujammu.ac.in/) only. "
+          "If asked anything outside CUJ topics, politely refuse and guide the user to check the official CUJ website.",
+    },
+  ],
+},
+"generationConfig": {
+  "maxOutputTokens": 900,
+  "temperature": 0.4,
+  "topP": 0.9,
+},
             "contents": contents,
           }),
         )
