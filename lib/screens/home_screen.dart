@@ -87,14 +87,6 @@ class _HomeScreenState extends State<HomeScreen> {
               navItems[index].label,
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
-            const Text(
-              "CU Jammu Student Portal",
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF64748B),
-              ),
-            ),
           ],
         ),
       ),
@@ -104,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                padding: const EdgeInsets.fromLTRB(16, 30, 16, 20),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Color(0xFF003366), Color(0xFF0B4A8B)],
@@ -116,9 +108,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     _StudentAvatar(
                       student: _student,
-                      radius: 30,
+                      radius: 50,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 15),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Expanded(
                 child: ListView.builder(
                   itemCount: navItems.length,

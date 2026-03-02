@@ -290,6 +290,7 @@ Widget _buildTrackTickets() {
   }
 }
 
+// ignore: unused_element
 class _SupportFormTab extends StatelessWidget {
   const _SupportFormTab();
 
@@ -300,6 +301,7 @@ class _SupportFormTab extends StatelessWidget {
     );
   }
 }
+// ignore: unused_element
 class _TrackTicketsTab extends StatelessWidget {
   const _TrackTicketsTab();
 

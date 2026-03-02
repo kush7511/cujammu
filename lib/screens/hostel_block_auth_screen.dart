@@ -866,7 +866,6 @@ class _HostelComplainTabState extends State<_HostelComplainTab>
 
   Future<void> _submitComplaint() async {
     if (_submitting) return;
-
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _submitting = true);
@@ -875,6 +874,7 @@ class _HostelComplainTabState extends State<_HostelComplainTab>
       await FirebaseFirestore.instance
           .collection('hostel_complaints')
           .add({
+        "userId": widget.student.enrollmentNumber,
         "studentName": widget.student.name,
         "rollNumber": widget.student.enrollmentNumber,
         "roomNumber": widget.student.roomNumber,
@@ -921,7 +921,7 @@ class _HostelComplainTabState extends State<_HostelComplainTab>
             controller: _tabController,
             children: [
 
-              /// ------------------ RAISE COMPLAINT ------------------
+              /// RAISE COMPLAINT
               ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
@@ -981,82 +981,79 @@ class _HostelComplainTabState extends State<_HostelComplainTab>
                 ],
               ),
 
-              /// ------------------ TRACK STATUS ------------------
+              /// TRACK STATUS
               StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('hostel_complaints')
-                    .where('rollNumber',
-                        isEqualTo: widget.student.enrollmentNumber)
-                    .snapshots(),
-                builder: (context, snapshot) {
+  stream: FirebaseFirestore.instance
+      .collection('hostel_complaints')
+      .where(
+        'rollNumber',
+        isEqualTo: widget.student.enrollmentNumber,
+      )
+      .snapshots(),
+  builder: (context, snapshot) {
 
-                  if (!snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-                  final docs = snapshot.data!.docs;
+    if (snapshot.hasError) {
+      return Center(
+        child: Text("Error: ${snapshot.error}"),
+      );
+    }
 
-                  if (docs.isEmpty) {
-                    return const Center(
-                      child: Text("No complaints submitted yet."),
-                    );
-                  }
+    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+      return const Center(
+        child: Text("No complaints submitted yet."),
+      );
+    }
 
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: docs.length,
-                    itemBuilder: (_, index) {
-                      final data = docs[index];
-                      final status = data['status'];
+    final docs = snapshot.data!.docs;
 
-Color statusColor;
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: docs.length,
+      itemBuilder: (_, index) {
+        final data = docs[index].data() as Map<String, dynamic>;
+        final status = data['status'] ?? "Pending";
 
-if (status == "Approved") {
-  statusColor = Colors.green;
-} else if (status == "Rejected") {
-  statusColor = Colors.red;
-} else if (status == "In Progress") {
-  statusColor = Colors.blue;
-} else {
-  statusColor = Colors.orange; // Pending
-}
+        Color statusColor = Colors.orange;
+        if (status == "Resolved") statusColor = Colors.green;
+        if (status == "Rejected") statusColor = Colors.red;
+        if (status == "In Progress") statusColor = Colors.blue;
 
-                      return Card(
-                        child: ListTile(
-                          leading: Icon(
-                            status == "Resolved"
-                                ? Icons.check_circle
-                                : status == "Rejected"
-                                    ? Icons.cancel
-                                    : Icons.hourglass_top,
-                            color: status == "Resolved"
-                                ? Colors.green
-                                : status == "Rejected"
-                                    ? Colors.red
-                                    : Colors.orange,
-                          ),
-                          title: Text(data['category']),
-                          subtitle: Column(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    Text(data['description']),
-    const SizedBox(height: 6),
-    Text(
-      "Status: $status",
-      style: TextStyle(
-        color: statusColor,
-        fontWeight: FontWeight.bold,
-      ),
-    ),
-  ],
-),
-                          isThreeLine: true,
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+        return Card(
+          child: ListTile(
+            leading: Icon(
+              status == "Resolved"
+                  ? Icons.check_circle
+                  : status == "Rejected"
+                      ? Icons.cancel
+                      : Icons.hourglass_top,
+              color: statusColor,
+            ),
+            title: Text(data['category'] ?? ""),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(data['description'] ?? ""),
+                const SizedBox(height: 6),
+                Text(
+                  "Status: $status",
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            isThreeLine: true,
+          ),
+        );
+      },
+    );
+  },
+)
             ],
           ),
         ),
@@ -1294,61 +1291,68 @@ class _HostelLeaveTabState extends State<_HostelLeaveTab>
 
               /// ---------------- LEAVE HISTORY ----------------
               StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('hostel_leave_applications')
-                    .where('rollNumber',
-                        isEqualTo: widget.student.enrollmentNumber)
-                    .snapshots(),
-                builder: (context, snapshot) {
+  stream: FirebaseFirestore.instance
+      .collection('hostel_leave_applications')
+      .where(
+        'rollNumber',
+        isEqualTo: widget.student.enrollmentNumber,
+      )
+      .snapshots(),
+  builder: (context, snapshot) {
 
-                  if (snapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(
-                        child: CircularProgressIndicator());
-                  }
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-                  if (!snapshot.hasData ||
-                      snapshot.data!.docs.isEmpty) {
-                    return const Center(
-                      child: Text("No leave applications found."),
-                    );
-                  }
+    if (snapshot.hasError) {
+      return Center(
+        child: Text("Error: ${snapshot.error}"),
+      );
+    }
 
-                  final docs = snapshot.data!.docs;
+    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+      return const Center(
+        child: Text("No leave applications found."),
+      );
+    }
 
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: docs.length,
-                    itemBuilder: (_, index) {
-                      final data = docs[index];
-                      return Card(
-                        child: ListTile(
-                          title: Text(data['leaveType'] ?? "Leave"),
-                          subtitle: Builder(builder: (context) {
-                            final status = data['status'] ?? "Pending";
-                            Color statusColor = Colors.orange;
-                            if (status == "Approved") statusColor = Colors.green;
-                            if (status == "Rejected") statusColor = Colors.red;
+    final docs = snapshot.data!.docs;
 
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text("From: ${data['fromDate']?.toDate() ?? ''}"),
-                                Text("To: ${data['toDate']?.toDate() ?? ''}"),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "Status: $status",
-                                  style: TextStyle(color: statusColor, fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            );
-                          }),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: docs.length,
+      itemBuilder: (_, index) {
+        final data = docs[index].data() as Map<String, dynamic>;
+        final status = data['status'] ?? "Pending";
+
+        Color statusColor = Colors.orange;
+        if (status == "Approved") statusColor = Colors.green;
+        if (status == "Rejected") statusColor = Colors.red;
+
+        return Card(
+          child: ListTile(
+            title: Text(data['leaveType'] ?? "Leave"),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("From: ${data['fromDate']?.toDate()}"),
+                Text("To: ${data['toDate']?.toDate()}"),
+                const SizedBox(height: 4),
+                Text(
+                  "Status: $status",
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  },
+),
             ],
           ),
         ),

@@ -1,4 +1,5 @@
 import 'dart:convert';
+// ignore: depend_on_referenced_packages
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -127,7 +128,7 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
       _scrollToBottom();
     }
   }
-
+  
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
@@ -296,7 +297,7 @@ class _CujAiChatService {
       "https://generativelanguage.googleapis.com/v1/models/$_model:generateContent?key=$_apiKey",
     );
 
-    final contents = history.map((turn) {
+    history.map((turn) {
       return {
         "role": turn.role == "assistant" ? "model" : "user",
         "parts": [
@@ -332,10 +333,9 @@ class _CujAiChatService {
 },}),
     );
 
-    if (response.statusCode != 200) {
-      throw Exception(
-          "API Error ${response.statusCode}: ${response.body}");
-    }
+if (response.statusCode != 200) {
+  throw Exception("API Error ${response.statusCode}");
+}
 
     final data = jsonDecode(response.body);
 
