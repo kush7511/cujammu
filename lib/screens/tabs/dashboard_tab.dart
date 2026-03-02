@@ -1,20 +1,18 @@
 import 'dart:async';
 import 'package:cuj/screens/admit_card_page.dart';
 import 'package:cuj/screens/chatbot/cuj_chatbot_sheet.dart';
+import 'package:cuj/screens/hostel_blocks/hostel_and_mess_page.dart';
 import 'package:cuj/screens/in_app_webview_page.dart';
-import 'package:cuj/screens/hostel_block_auth_screen.dart';
 import 'package:cuj/screens/timetable_page.dart';
 import 'package:cuj/screens/transport_page.dart';
 import 'cuj_radio_page.dart';
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../data/student_db.dart';
-import '../../data/hostel_student_db.dart';
 import '../../services/university_notification_service.dart';
 
 class DashboardTab extends StatefulWidget {
@@ -209,7 +207,7 @@ class _DashboardTabState extends State<DashboardTab> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const _HostelMessPage(),
+              builder: (context) => const HostelAndMessPage(),
             ),
           );
         },
@@ -285,107 +283,229 @@ class _DashboardTabState extends State<DashboardTab> {
               .where((item) => item.title.toLowerCase().contains(query))
               .take(5)
               .toList();
+    final screenWidth = MediaQuery.of(context).size.width;
+    final crossAxisCount = screenWidth >= 1200
+        ? 5
+        : screenWidth >= 900
+            ? 4
+            : screenWidth >= 620
+                ? 3
+                : 2;
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12
+        ? "Good Morning"
+        : hour < 17
+            ? "Good Afternoon"
+            : "Good Evening";
 
     return Stack(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (_) => setState(() {}),
-                      decoration: InputDecoration(
-                        hintText: "serach here",
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: query.isEmpty
-                            ? null
-                            : IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() {});
-                                },
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFF8FBFF), Color(0xFFF1F5FA)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF003366), Color(0xFF0B4A8B)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF003366).withValues(alpha: 0.25),
+                              blurRadius: 16,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "$greeting, ${widget.student.name.split(" ").first}",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
                               ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              "${widget.student.roll}  |  ${widget.student.course}",
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: const [
+                                Icon(Icons.grid_view_rounded, color: Colors.white70, size: 18),
+                                SizedBox(width: 8),
+                                Text(
+                                  "University Services Dashboard",
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Material(
-                        color: const Color(0xFFE8EEF5),
-                        borderRadius: BorderRadius.circular(12),
-                        child: IconButton(
-                          tooltip: "Notifications",
-                          onPressed: _openNotificationsSheet,
-                          icon: const Icon(
-                            Icons.notifications_none_rounded,
-                            color: Color(0xFF003366),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              onChanged: (_) => setState(() {}),
+                              decoration: InputDecoration(
+                                hintText: "Search dashboard services",
+                                prefixIcon: const Icon(Icons.search),
+                                suffixIcon: query.isEmpty
+                                    ? null
+                                    : IconButton(
+                                        icon: const Icon(Icons.clear),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          setState(() {});
+                                        },
+                                      ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Material(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                child: IconButton(
+                                  tooltip: "Notifications",
+                                  onPressed: _openNotificationsSheet,
+                                  icon: const Icon(
+                                    Icons.notifications_none_rounded,
+                                    color: Color(0xFF003366),
+                                  ),
+                                ),
+                              ),
+                              if (_hasUnreadNotifications)
+                                const Positioned(
+                                  right: 6,
+                                  top: 6,
+                                  child: _NotificationDot(),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      if (suggestions.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Card(
+                          child: Column(
+                            children: suggestions
+                                .map(
+                                  (item) => ListTile(
+                                    dense: true,
+                                    leading: Icon(item.icon, color: item.color),
+                                    title: Text(item.title),
+                                    onTap: () {
+                                      _searchController.text = item.title;
+                                      setState(() {});
+                                      item.onTap();
+                                    },
+                                  ),
+                                )
+                                .toList(),
                           ),
                         ),
+                      ],
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _DashboardInfoChip(
+                              icon: Icons.widgets_outlined,
+                              label: "Modules",
+                              value: "${items.length}",
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _DashboardInfoChip(
+                              icon: Icons.notifications_active_outlined,
+                              label: "Unread",
+                              value: _hasUnreadNotifications ? "Yes" : "No",
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: _DashboardInfoChip(
+                              icon: Icons.verified_user_outlined,
+                              label: "Status",
+                              value: "Active",
+                            ),
+                          ),
+                        ],
                       ),
-                      if (_hasUnreadNotifications)
-                        const Positioned(
-                          right: 6,
-                          top: 6,
-                          child: _NotificationDot(),
-                        ),
                     ],
                   ),
-                ],
-              ),
-              if (suggestions.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Card(
-                  child: Column(
-                    children: suggestions
-                        .map(
-                          (item) => ListTile(
-                            dense: true,
-                            leading: Icon(item.icon, color: item.color),
-                            title: Text(item.title),
-                            onTap: () {
-                              _searchController.text = item.title;
-                              setState(() {});
-                              item.onTap();
-                            },
-                          ),
-                        )
-                        .toList(),
-                  ),
                 ),
-              ],
-              const SizedBox(height: 12),
-              Expanded(
-                child: filteredItems.isEmpty
-                    ? const Center(
-                        child: Text(
-                          "No dashboard items found",
-                          style: TextStyle(fontSize: 16),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 92),
+                sliver: filteredItems.isEmpty
+                    ? const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.only(top: 26),
+                          child: Center(
+                            child: Text(
+                              "No dashboard items found",
+                              style: TextStyle(fontSize: 16),
+                            ),
+                          ),
                         ),
                       )
-                    : GridView.count(
-                        crossAxisCount: 3,
-                        crossAxisSpacing: 15,
-                        mainAxisSpacing: 15,
-                        children: filteredItems
-                            .map(
-                              (item) => DashboardCard(
-                                title: item.title,
-                                icon: item.icon,
-                                color: item.color,
-                                onTap: item.onTap,
-                              ),
-                            )
-                            .toList(),
+                    : SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.98,
+                        ),
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final item = filteredItems[index];
+                          return DashboardCard(
+                            title: item.title,
+                            icon: item.icon,
+                            color: item.color,
+                            onTap: item.onTap,
+                          );
+                        }, childCount: filteredItems.length),
                       ),
               ),
             ],
@@ -405,9 +525,11 @@ class _DashboardTabState extends State<DashboardTab> {
                 context: context,
                 isScrollControlled: true,
                 useSafeArea: true,
-                builder: (_) =>
-                    CujChatbotSheet(
-                    studentName: widget.student.name, enrollmentNumber: widget.student.roll),);
+                builder: (_) => CujChatbotSheet(
+                  studentName: widget.student.name,
+                  enrollmentNumber: widget.student.roll,
+                ),
+              );
             },
           ),
         ),
@@ -793,141 +915,6 @@ class _ScholarshipsPage extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _HostelMessPage extends StatelessWidget {
-  const _HostelMessPage();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Hostel & Mess")),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: const [
-          Text(
-            "Campus Hostel Blocks",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 25),
-          _HostelBlockTile(
-            name: "SPM Boys Hostel",
-            subtitle: "Boys Hostel Block",
-            icon: Icons.apartment_rounded,
-            backgroundColor: Color(0xFFE3F2FD),
-            iconColor: Color(0xFF1565C0),
-            hostelBlock: HostelBlock.spmBoys,
-          ),
-          SizedBox(height: 10),
-          _HostelBlockTile(
-            name: "BRS Boys Hostel",
-            subtitle: "Boys Hostel Block",
-            icon: Icons.apartment_rounded,
-            backgroundColor: Color(0xFFE8F5E9),
-            iconColor: Color(0xFF2E7D32),
-            hostelBlock: HostelBlock.brsBoys,
-          ),
-          SizedBox(height: 10),
-          _HostelBlockTile(
-            name: "Shailputri Girls Hostel",
-            subtitle: "Girls Hostel Block",
-            icon: Icons.apartment_rounded,
-            backgroundColor: Color(0xFFFCE4EC),
-            iconColor: Color(0xFFAD1457),
-            hostelBlock: HostelBlock.shailputriGirls,
-          ),
-          SizedBox(height: 20),
-          Text(
-            "Mess Services",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 10),
-          Card(
-            child: ListTile(
-              leading: Icon(Icons.restaurant_menu, color: Colors.teal),
-              title: Text("Mess Menu"),
-              subtitle: Text(
-                "Check breakfast/lunch/dinner schedule and special meal notices.",
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HostelBlockTile extends StatelessWidget {
-  final String name;
-  final String subtitle;
-  final IconData icon;
-  final Color backgroundColor;
-  final Color iconColor;
-  final HostelBlock hostelBlock;
-
-  const _HostelBlockTile({
-    required this.name,
-    required this.subtitle,
-    required this.icon,
-    required this.backgroundColor,
-    required this.iconColor,
-    required this.hostelBlock,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => HostelBlockAuthScreen(hostelBlock: hostelBlock),
-          ),
-        );
-      },
-      child: Container(
-        width: double.infinity,
-        constraints: const BoxConstraints(minHeight: 108),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: Colors.white,
-              child: Icon(icon, color: iconColor),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(color: Colors.black54),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black54),
-          ],
-        ),
       ),
     );
   }
@@ -1387,6 +1374,58 @@ class _DashboardItem {
   });
 }
 
+class _DashboardInfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _DashboardInfoChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: const Color(0xFF003366)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF0F172A),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class DashboardCard extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -1407,22 +1446,43 @@ class DashboardCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       onTap: onTap,
       child: Container(
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: color,
-              child: Icon(icon, size: 30, color: Colors.white),
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: color,
+                  child: Icon(icon, size: 22, color: Colors.white),
+                ),
+                const Spacer(),
+                Icon(Icons.arrow_forward, size: 18, color: color),
+              ],
             ),
-            const SizedBox(height: 12),
             Text(
               title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                color: Color(0xFF0F172A),
+              ),
             ),
           ],
         ),

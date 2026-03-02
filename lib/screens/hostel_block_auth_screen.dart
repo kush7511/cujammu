@@ -1,4 +1,5 @@
 import 'dart:convert';
+// ignore: depend_on_referenced_packages
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -250,7 +251,10 @@ class _HostelBlockHomeScreenState extends State<HostelBlockHomeScreen> {
 
   List<Widget> _screens() {
     return [
-      _HostelHomeTab(student: _student),
+      _HostelHomeTab(
+        student: _student,
+        hostelBlock: widget.hostelBlock,
+      ),
       _HostelComplainTab(
         student: _student,
         hostelBlock: widget.hostelBlock,
@@ -326,19 +330,139 @@ class _HostelBlockHomeScreenState extends State<HostelBlockHomeScreen> {
 
 class _HostelHomeTab extends StatelessWidget {
   final HostelStudent student;
+  final HostelBlock hostelBlock;
 
-  const _HostelHomeTab({required this.student});
+  const _HostelHomeTab({
+    required this.student,
+    required this.hostelBlock,
+  });
 
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
+  bool get _isGirlsHostel => hostelBlock == HostelBlock.shailputriGirls;
+  bool get _isSpmHostel => hostelBlock == HostelBlock.spmBoys;
+  bool get _isBrsHostel => hostelBlock == HostelBlock.brsBoys;
+  bool get _isBoysProfessionalHostel => _isSpmHostel || _isBrsHostel;
+  String get _boysBlockName => _isSpmHostel ? "SPM" : "BRS";
+
+  String _greetingMessage() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
+  }
+
+  String _todayLabel() {
+    const weekdays = [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday",
+    ];
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    final now = DateTime.now();
+    return "${weekdays[now.weekday - 1]}, ${now.day} ${months[now.month - 1]} ${now.year}";
+  }
+
+  Widget _buildIntroCard({
+    required BuildContext context,
+    required List<Color> gradientColors,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors.last.withValues(alpha: 0.25),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "${_greetingMessage()}, ${student.name.split(" ").first}",
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Icon(Icons.meeting_room_outlined, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(
+                "Room ${student.roomNumber}",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                _todayLabel(),
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGirlsDashboard(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 10),
+        _buildIntroCard(
+          context: context,
+          gradientColors: const [Color(0xFF9C1B5E), Color(0xFF4A274F)],
+          subtitle:
+              "Shailputri student dashboard: safety, wellness and daily support.",
+        ),
+        const SizedBox(height: 16),
         const Text(
-          "Hostel Dashboard",
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          "Safety & Support",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 10),
         GridView.count(
@@ -347,42 +471,307 @@ class _HostelHomeTab extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          childAspectRatio: 1.2,
+          childAspectRatio: 1.18,
+          children: const [
+            _HostelQuickTile(
+              title: "Women Safety Desk",
+              subtitle: "24x7 warden hotline and quick SOS.",
+              icon: Icons.shield_moon_outlined,
+              color: Color(0xFF8E24AA),
+            ),
+            _HostelQuickTile(
+              title: "Night Escort",
+              subtitle: "Campus escort request after evening hours.",
+              icon: Icons.directions_walk_outlined,
+              color: Color(0xFFAD1457),
+            ),
+            _HostelQuickTile(
+              title: "Health & Wellness",
+              subtitle: "Counsellor and medical assistance desk.",
+              icon: Icons.health_and_safety_outlined,
+              color: Color(0xFF00897B),
+            ),
+            _HostelQuickTile(
+              title: "Sanitary Essentials",
+              subtitle: "Request emergency essentials privately.",
+              icon: Icons.volunteer_activism_outlined,
+              color: Color(0xFFEF6C00),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const Card(
+          child: ListTile(
+            leading: Icon(Icons.family_restroom_outlined, color: Colors.indigo),
+            title: Text("Visitor & Guardian Window"),
+            subtitle: Text(
+              "Manage approved visitor timing and guardian contact checks.",
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Card(
+          child: ListTile(
+            leading: Icon(Icons.restaurant_menu, color: Colors.teal),
+            title: Text("Mess & Nutrition Alerts"),
+            subtitle: Text(
+              "Track daily menu, special diet notice and mess feedback.",
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGeneralDashboard(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildIntroCard(
+          context: context,
+          gradientColors: const [Color(0xFF0B4A8B), Color(0xFF1C2A4A)],
+          subtitle:
+              "BRS hostel dashboard for services, updates and student operations.",
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          "Quick Access",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 10),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 1.18,
           children: const [
             _HostelQuickTile(
               title: "Mess Menu",
+              subtitle: "Check breakfast, lunch and dinner schedule.",
               icon: Icons.restaurant_menu,
               color: Color(0xFF0B5ED7),
             ),
             _HostelQuickTile(
               title: "Fee Status",
+              subtitle: "View dues, paid amount and receipts.",
               icon: Icons.account_balance_wallet_outlined,
               color: Color(0xFFEF6C00),
             ),
             _HostelQuickTile(
-              title: "Notices",
+              title: "Hostel Notices",
+              subtitle: "Read latest warden and office announcements.",
               icon: Icons.campaign_outlined,
               color: Color(0xFF1565C0),
             ),
             _HostelQuickTile(
               title: "Emergency",
+              subtitle: "Quick contact for urgent hostel incidents.",
               icon: Icons.emergency_outlined,
-              color: Color(0xFFAD1457),
+              color: Color(0xFFC62828),
             ),
           ],
         ),
       ],
     );
   }
+
+  Widget _buildSpmDashboard(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildIntroCard(
+          context: context,
+          gradientColors: const [Color(0xFF0A3C78), Color(0xFF0F172A)],
+          subtitle:
+              "$_boysBlockName operations dashboard for daily hostel services and management.",
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: const [
+            Expanded(
+              child: _HostelStatCard(
+                label: "Room Status",
+                value: "Active",
+                icon: Icons.meeting_room_outlined,
+                color: Color(0xFF1D4ED8),
+              ),
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: _HostelStatCard(
+                label: "Gate Policy",
+                value: "10:00 PM",
+                icon: Icons.lock_clock_outlined,
+                color: Color(0xFF0F766E),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          "Quick Modules",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 10),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 1.18,
+          children: const [
+            _HostelQuickTile(
+              title: "Mess Schedule",
+              subtitle: "Daily breakfast, lunch and dinner timeline.",
+              icon: Icons.restaurant_menu,
+              color: Color(0xFF0B5ED7),
+            ),
+            _HostelQuickTile(
+              title: "Room Maintenance",
+              subtitle: "Raise carpentry, electrical and plumbing requests.",
+              icon: Icons.handyman_outlined,
+              color: Color(0xFFEF6C00),
+            ),
+            _HostelQuickTile(
+              title: "Gate Pass",
+              subtitle: "Apply and track day/night gate-pass requests.",
+              icon: Icons.security_outlined,
+              color: Color(0xFF7C3AED),
+            ),
+            _HostelQuickTile(
+              title: "Laundry Schedule",
+              subtitle: "Check floor-wise laundry collection slots.",
+              icon: Icons.local_laundry_service_outlined,
+              color: Color(0xFF00897B),
+            ),
+            _HostelQuickTile(
+              title: "Hostel Circulars",
+              subtitle: "Important block notices from wardens.",
+              icon: Icons.campaign_outlined,
+              color: Color(0xFF1565C0),
+            ),
+            _HostelQuickTile(
+              title: "Emergency Contact",
+              subtitle: "Reach warden/security/medical support quickly.",
+              icon: Icons.emergency_outlined,
+              color: Color(0xFFC62828),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const Card(
+          child: ListTile(
+            leading: Icon(Icons.badge_outlined, color: Colors.indigo),
+            title: Text("Warden Desk"),
+            subtitle: Text(
+              "Office hours, discipline updates and block announcements.",
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const SizedBox(height: 8),
+        Text(
+          _isGirlsHostel
+              ? "Girls Hostel Professional Dashboard"
+              : _isBoysProfessionalHostel
+                  ? "$_boysBlockName Boys Hostel Professional Dashboard"
+                  : "Boys Hostel Professional Dashboard",
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF1F2937),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _isGirlsHostel
+            ? _buildGirlsDashboard(context)
+            : _isBoysProfessionalHostel
+                ? _buildSpmDashboard(context)
+                : _buildGeneralDashboard(context),
+      ],
+    );
+  }
+}
+
+class _HostelStatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _HostelStatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: color,
+            child: Icon(icon, color: Colors.white, size: 16),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF334155),
+                  ),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _HostelQuickTile extends StatelessWidget {
   final String title;
+  final String subtitle;
   final IconData icon;
   final Color color;
 
   const _HostelQuickTile({
     required this.title,
+    required this.subtitle,
     required this.icon,
     required this.color,
   });
@@ -418,6 +807,17 @@ class _HostelQuickTile extends StatelessWidget {
               style: const TextStyle(
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF1E293B),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                color: const Color(0xFF1E293B).withValues(alpha: 0.8),
               ),
             ),
           ],

@@ -40,14 +40,18 @@ class _HomeScreenState extends State<HomeScreen> {
   int index = 0;
   late Student _student;
 
-  final tabs = [
-    "Dashboard",
-    "Profile",
-    "Attendance",
-    "Results",
-    "Settings",
-    "Help",
-    "Logout",
+  final navItems = const <_HomeNavItem>[
+    _HomeNavItem(label: "Dashboard", icon: Icons.dashboard_rounded),
+    _HomeNavItem(label: "Profile", icon: Icons.person_rounded),
+    _HomeNavItem(label: "Attendance", icon: Icons.calendar_month_rounded),
+    _HomeNavItem(label: "Results", icon: Icons.assessment_rounded),
+    _HomeNavItem(label: "Settings", icon: Icons.settings_rounded),
+    _HomeNavItem(label: "Help", icon: Icons.help_rounded),
+    _HomeNavItem(
+      label: "Logout",
+      icon: Icons.logout_rounded,
+      accentColor: Color(0xFFB91C1C),
+    ),
   ];
 
   @override
@@ -70,54 +74,144 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(tabs[index])),
-      drawer: Drawer(
-        child: ListView(
+      backgroundColor: const Color(0xFFF5F8FC),
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0F172A),
+        titleSpacing: 12,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            UserAccountsDrawerHeader(
-              currentAccountPicture: _StudentAvatar(
-                student: _student,
-                radius: 40,
+            Text(
+              navItems[index].label,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const Text(
+              "CU Jammu Student Portal",
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF64748B),
               ),
-              accountName: Text(_student.name),
-              accountEmail: Text(_student.roll),
-            ),
-            ListTile(
-              title: const Text("Dashboard"),
-              onTap: () => _selectTab(0),
-              leading: const Icon(Icons.dashboard),
-            ),
-            ListTile(
-              title: const Text("Profile"),
-              onTap: () => _selectTab(1),
-              leading: const Icon(Icons.person),
-            ),
-            ListTile(
-              title: const Text("Attendance"),
-              onTap: () => _selectTab(2),
-              leading: const Icon(Icons.calendar_month),
-            ),
-            ListTile(
-              title: const Text("Results"),
-              onTap: () => _selectTab(3),
-              leading: const Icon(Icons.assessment),
-            ),
-            ListTile(
-              title: const Text("Settings"),
-              onTap: () => _selectTab(4),
-              leading: const Icon(Icons.settings),
-            ),
-            ListTile(
-              title: const Text("Help"),
-              onTap: () => _selectTab(5),
-              leading: const Icon(Icons.help),
-            ),
-            ListTile(
-              title: const Text("Logout"),
-              onTap: () => _selectTab(6),
-              leading: const Icon(Icons.logout),
             ),
           ],
+        ),
+      ),
+      drawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF003366), Color(0xFF0B4A8B)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    _StudentAvatar(
+                      student: _student,
+                      radius: 30,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _student.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _student.roll,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _student.course,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: navItems.length,
+                  itemBuilder: (context, itemIndex) {
+                    final item = navItems[itemIndex];
+                    return _DrawerNavTile(
+                      title: item.label,
+                      icon: item.icon,
+                      isSelected: index == itemIndex,
+                      accentColor: item.accentColor,
+                      onTap: () => _selectTab(itemIndex),
+                    );
+                  },
+                ),
+              ),
+              const Divider(height: 1),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 10, 16, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.verified_outlined,
+                          size: 16,
+                          color: Color(0xFF64748B),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          "CUJ App v1.0.0",
+                          style: TextStyle(
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      "All rights reserved to CU Jammu.",
+                      style: TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
       body: IndexedStack(
@@ -142,6 +236,61 @@ class _HomeScreenState extends State<HomeScreen> {
             onBiometricLoginChanged: widget.onBiometricLoginChanged,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HomeNavItem {
+  final String label;
+  final IconData icon;
+  final Color? accentColor;
+
+  const _HomeNavItem({
+    required this.label,
+    required this.icon,
+    this.accentColor,
+  });
+}
+
+class _DrawerNavTile extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final bool isSelected;
+  final Color? accentColor;
+  final VoidCallback onTap;
+
+  const _DrawerNavTile({
+    required this.title,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+    this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final base = accentColor ?? const Color(0xFF003366);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      child: Material(
+        color: isSelected ? base.withValues(alpha: 0.12) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          onTap: onTap,
+          leading: Icon(icon, color: isSelected ? base : const Color(0xFF334155)),
+          title: Text(
+            title,
+            style: TextStyle(
+              color: isSelected ? base : const Color(0xFF0F172A),
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+            ),
+          ),
+          trailing: isSelected
+              ? Icon(Icons.arrow_forward_ios, size: 14, color: base)
+              : null,
+        ),
       ),
     );
   }
