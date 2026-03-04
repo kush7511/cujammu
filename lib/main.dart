@@ -1,16 +1,38 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'screens/login_screen.dart';
+import 'screens/home_screen.dart';
+import 'data/student_db.dart';
 import 'services/app_settings_service.dart';
+import 'services/university_notification_service.dart';
+import 'services/session_service.dart';
 import 'firebase_options.dart'; // Ensure this file contains DefaultFirebaseOptions
 
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
+  await UniversityNotificationService.instance.initialize();
+  await UniversityNotificationService.instance.storeRemoteMessage(message);
+}
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  FirebaseMessaging.onBackgroundMessage(
+    _firebaseMessagingBackgroundHandler,
+  );
+
   runApp(const CUJApp());
 }
+
 
 
 class CUJApp extends StatefulWidget {
@@ -26,21 +48,30 @@ class _CUJAppState extends State<CUJApp> {
     notificationsEnabled: true,
     biometricLoginEnabled: false,
   );
+  Student? _loggedInStudent;
   bool _isLoading = true;
   bool _splashDone = false;
 
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    _initializeApp();
+    _initializeNotifications();
+  }
+  Future<void> _initializeNotifications() async {
+    await UniversityNotificationService.instance.initialize();
   }
 
-  Future<void> _loadSettings() async {
+  Future<void> _initializeApp() async {
     try {
+      await loadRegisteredStudents();
       final loadedSettings = await AppSettingsService.loadSettings();
+      final savedRoll = await SessionService.getLoggedInRoll();
+      final savedStudent = savedRoll == null ? null : studentDB[savedRoll];
       if (!mounted) return;
       setState(() {
         _settings = loadedSettings;
+        _loggedInStudent = savedStudent;
         _isLoading = false;
       });
     } on PlatformException {
@@ -122,12 +153,20 @@ class _CUJAppState extends State<CUJApp> {
             )
           : _isLoading
               ? const _InitialLoadingScreen()
-              : LoginScreen(
-                  settings: _settings,
-                  onThemeChanged: _setDarkMode,
-                  onNotificationsChanged: _setNotificationsEnabled,
-                  onBiometricLoginChanged: _setBiometricLoginEnabled,
-                ),
+              : (_loggedInStudent != null
+                    ? HomeScreen(
+                        student: _loggedInStudent!,
+                        settings: _settings,
+                        onThemeChanged: _setDarkMode,
+                        onNotificationsChanged: _setNotificationsEnabled,
+                        onBiometricLoginChanged: _setBiometricLoginEnabled,
+                      )
+                    : LoginScreen(
+                        settings: _settings,
+                        onThemeChanged: _setDarkMode,
+                        onNotificationsChanged: _setNotificationsEnabled,
+                        onBiometricLoginChanged: _setBiometricLoginEnabled,
+                      )),
     );
   },
 );

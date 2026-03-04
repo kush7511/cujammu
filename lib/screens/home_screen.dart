@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/student_db.dart';
 import '../services/app_settings_service.dart';
+import '../services/session_service.dart';
 import 'tabs/dashboard_tab.dart';
 import 'tabs/results_tab.dart';
 import 'tabs/attendance_tab.dart';
@@ -966,7 +967,9 @@ class LogoutTab extends StatelessWidget {
                   ),
                   elevation: 0,
                 ),
-                onPressed: () {
+                onPressed: () async {
+                  await SessionService.clearLoggedInRoll();
+                  if (!context.mounted) return;
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(
                       builder: (_) => LoginScreen(

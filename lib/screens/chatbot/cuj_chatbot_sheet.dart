@@ -1,8 +1,10 @@
 import 'dart:convert';
+
 // ignore: depend_on_referenced_packages
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
 
 class CujChatbotSheet extends StatefulWidget {
   final String studentName;
@@ -55,20 +57,6 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
     _scrollToBottom();
 
     try {
-      // Create conversation document first time
-      if (_conversationId == null) {
-        final doc = await FirebaseFirestore.instance
-            .collection('chat_conversations')
-            .add({
-          "studentName": widget.studentName,
-          "enrollmentNumber": widget.enrollmentNumber,
-          "createdAt": FieldValue.serverTimestamp(),
-          "lastUpdated": FieldValue.serverTimestamp(),
-        });
-
-        _conversationId = doc.id;
-      }
-
       final reply = await _chatService.ask(
         _messages
             .where((m) => m.role != _MessageRole.system)
@@ -77,44 +65,18 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
       );
 
       if (!mounted) return;
-
       setState(() {
-        _messages.add(
-          _ChatMessage(text: reply, role: _MessageRole.assistant),
-        );
+        _messages.add(_ChatMessage(text: reply, role: _MessageRole.assistant));
       });
 
-      final messagesRef = FirebaseFirestore.instance
-          .collection('chat_conversations')
-          .doc(_conversationId)
-          .collection('messages');
-
-      await messagesRef.add({
-        "sender": "user",
-        "text": userText,
-        "timestamp": FieldValue.serverTimestamp(),
-      });
-
-      await messagesRef.add({
-        "sender": "bot",
-        "text": reply,
-        "timestamp": FieldValue.serverTimestamp(),
-      });
-
-      await FirebaseFirestore.instance
-          .collection('chat_conversations')
-          .doc(_conversationId)
-          .update({
-        "lastUpdated": FieldValue.serverTimestamp(),
-      });
+      // Best-effort persistence. AI reply should still work if Firestore fails.
+      await _persistConversationTurn(userText: userText, botReply: reply);
     } catch (e) {
       if (!mounted) return;
-
       setState(() {
         _messages.add(
-          const _ChatMessage(
-            text:
-                "I could not fetch the answer right now. Please try again.",
+          _ChatMessage(
+            text: _chatService.userFacingError(e),
             role: _MessageRole.system,
           ),
         );
@@ -128,7 +90,54 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
       _scrollToBottom();
     }
   }
-  
+
+  Future<void> _persistConversationTurn({
+    required String userText,
+    required String botReply,
+  }) async {
+    try {
+      if (_conversationId == null) {
+        final doc = await FirebaseFirestore.instance
+            .collection("chat_conversations")
+            .add({
+          "studentName": widget.studentName,
+          "enrollmentNumber": widget.enrollmentNumber,
+          "description":
+          "Chat between ${widget.studentName} (${widget.enrollmentNumber}) and CUJ AI Assistant",
+          "createdAt": FieldValue.serverTimestamp(),
+          "lastUpdated": FieldValue.serverTimestamp(),
+        });
+        _conversationId = doc.id;
+      }
+
+      final messagesRef = FirebaseFirestore.instance
+          .collection("chat_conversations")
+          .doc(_conversationId)
+          .collection("messages");
+
+      await messagesRef.add({
+        "sender": "user",
+        "text": userText,
+        "timestamp": FieldValue.serverTimestamp(),
+      });
+
+      await messagesRef.add({
+        "sender": "bot",
+        "text": botReply,
+        "timestamp": FieldValue.serverTimestamp(),
+      });
+
+      await FirebaseFirestore.instance
+          .collection("chat_conversations")
+          .doc(_conversationId)
+          .update({
+        "lastUpdated": FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
+      // Ignore Firestore failures to keep chat functional.
+    }
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
@@ -168,8 +177,7 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
                 const Expanded(
                   child: Text(
                     "CUJ AI Agent",
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
                 IconButton(
@@ -214,20 +222,17 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
                     child: Container(
                       margin: const EdgeInsets.symmetric(vertical: 6),
                       padding: const EdgeInsets.all(12),
-                      constraints:
-                          const BoxConstraints(maxWidth: 320),
+                      constraints: const BoxConstraints(maxWidth: 320),
                       decoration: BoxDecoration(
                         color: isUser
                             ? const Color(0xFF003366)
                             : Colors.grey.shade200,
-                        borderRadius:
-                            BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       child: Text(
                         message.text,
                         style: TextStyle(
-                          color:
-                              isUser ? Colors.white : Colors.black87,
+                          color: isUser ? Colors.white : Colors.black87,
                         ),
                       ),
                     ),
@@ -247,8 +252,7 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
                       hintText:
                           "Ask me anything about admissions, fees, courses...",
                       border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                   ),
@@ -284,20 +288,25 @@ class _ChatTurn {
 }
 
 class _CujAiChatService {
-  static const String _apiKey =
+  static const String _apiKeyFromDefine =
       String.fromEnvironment("GEMINI_API_KEY");
-  static const String _model = "gemini-1.5-flash";
+
+  static const List<String> _models = [
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-latest",
+  ];
 
   Future<String> ask(List<_ChatTurn> history) async {
-    if (_apiKey.isEmpty) {
-      throw Exception("GEMINI_API_KEY not provided.");
+    final apiKey = _apiKeyFromDefine.trim();
+
+    if (apiKey.isEmpty) {
+      throw Exception(
+        "Gemini API key is not configured. Run/build with --dart-define=GEMINI_API_KEY=YOUR_KEY.",
+      );
     }
 
-    final uri = Uri.parse(
-      "https://generativelanguage.googleapis.com/v1/models/$_model:generateContent?key=$_apiKey",
-    );
-
-    history.map((turn) {
+    final contents = history.map((turn) {
       return {
         "role": turn.role == "assistant" ? "model" : "user",
         "parts": [
@@ -306,41 +315,113 @@ class _CujAiChatService {
       };
     }).toList();
 
-    final response = await http.post(
-      uri,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "system_instruction": {
-  "parts": [
-    {
-      "text":
-          "You are CUJ AI Assistant for the Central University of Jammu (CUJ). "
-          "Provide detailed, well-structured, and professional answers of at least 200-300 words. "
-          "Start responses with a friendly and professional tone like: "
-          "'Certainly! Here is a detailed explanation regarding your query:' or similar natural openings. "
-          "Organize answers using short paragraphs and bullet points when helpful. "
-          "Explain clearly and completely. "
-          "Only answer questions related to Central University of Jammu (CUJ). "
-          "Use official CUJ website information (https://www.cujammu.ac.in/) only. "
-          "If asked anything outside CUJ topics, politely refuse and guide the user to check the official CUJ website.",
-    },
-  ],
-},
-"generationConfig": {
-  "maxOutputTokens": 900,
-  "temperature": 0.4,
-  "topP": 0.9,
-},}),
+    Exception? lastError;
+    for (final model in _models) {
+      try {
+        final text = await _askWithModel(
+          apiKey: apiKey,
+          model: model,
+          contents: contents,
+        );
+        if (text.isNotEmpty) return text;
+      } catch (e) {
+        lastError = Exception(e.toString());
+      }
+    }
+
+    throw lastError ?? Exception("No response from AI.");
+  }
+
+  Future<String> _askWithModel({
+    required String apiKey,
+    required String model,
+    required List<Map<String, dynamic>> contents,
+  }) async {
+    final uri = Uri.parse(
+      "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey",
     );
 
-if (response.statusCode != 200) {
-  throw Exception("API Error ${response.statusCode}");
-}
+    final response = await http
+        .post(
+          uri,
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode({
+            "system_instruction": {
+              "parts": [
+                {
+                  "text":
+                      "You are CUJ AI Assistant for the Central University of Jammu (CUJ). "
+                      "Provide detailed, well-structured, and professional answers of at least 200-300 words. "
+                      "Start responses with a friendly and professional tone like: "
+                      "'Certainly! Here is a detailed explanation regarding your query:' "
+                      "Organize answers clearly using paragraphs and bullet points where required. "
+                      "Only answer questions related to CUJ.",
+                }
+              ]
+            },
+            "generationConfig": {
+              "maxOutputTokens": 800,
+              "temperature": 0.5,
+              "topP": 0.9,
+            },
+            "contents": contents,
+          }),
+        )
+        .timeout(const Duration(seconds: 25));
+
+    if (response.statusCode != 200) {
+      String errorMessage = "HTTP ${response.statusCode}";
+      try {
+        final error = jsonDecode(response.body);
+        final apiMsg = error["error"]?["message"]?.toString();
+        if (apiMsg != null && apiMsg.isNotEmpty) {
+          errorMessage = "HTTP ${response.statusCode}: $apiMsg";
+        }
+      } catch (_) {}
+      throw Exception(errorMessage);
+    }
 
     final data = jsonDecode(response.body);
+    final candidates = data["candidates"];
+    if (candidates is! List || candidates.isEmpty) {
+      throw Exception("No response candidates returned by AI.");
+    }
 
-    return data["candidates"][0]["content"]["parts"][0]["text"]
-        .toString()
+    final content = candidates.first["content"];
+    if (content is! Map<String, dynamic>) {
+      throw Exception("Invalid AI response content.");
+    }
+
+    final parts = content["parts"];
+    if (parts is! List || parts.isEmpty) {
+      throw Exception("AI returned empty response.");
+    }
+
+    final text = parts
+        .whereType<Map>()
+        .map((p) => p["text"]?.toString() ?? "")
+        .where((t) => t.trim().isNotEmpty)
+        .join("\n")
         .trim();
+
+    if (text.isEmpty) {
+      throw Exception("AI returned no text.");
+    }
+    return text;
+  }
+
+  String userFacingError(Object error) {
+    final msg = error.toString();
+    if (msg.contains("API key is not configured") ||
+        msg.contains("API_KEY_INVALID")) {
+      return "Chatbot is not configured with a valid AI key. Please contact support to set GEMINI_API_KEY.";
+    }
+    if (msg.contains("PERMISSION_DENIED")) {
+      return "Chatbot permission is denied for this API key. Please verify Gemini API access.";
+    }
+    if (msg.contains("timed out")) {
+      return "Chatbot request timed out. Please check internet and try again.";
+    }
+    return "I could not fetch the answer right now. Please try again.";
   }
 }

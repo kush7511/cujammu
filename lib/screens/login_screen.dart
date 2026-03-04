@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import '../data/student_db.dart';
+import '../services/session_service.dart';
 import 'home_screen.dart';
 import '../services/app_settings_service.dart';
 
@@ -106,6 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
           return;
         }
       }
+      await SessionService.saveLoggedInRoll(roll);
 
       Navigator.pushReplacement(
         context,
@@ -226,6 +228,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             rollCtrl.clear();
                             passCtrl.clear();
                           }
+                          await SessionService.clearLoggedInRoll();
                           if (!mounted) return;
                           Navigator.pop(dialogContext);
                           setState(() {

@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -76,20 +75,10 @@ class _TransportPageState extends State<TransportPage>
         Uri.parse("https://play.google.com/store/apps/details?id=$packageName");
 
     if (Platform.isAndroid) {
-      try {
-        const intent = AndroidIntent(
-          action: "action_main",
-          category: "category_launcher",
-          package: packageName,
-        );
-        await intent.launch();
+      final Uri marketUri = Uri.parse("market://details?id=$packageName");
+      if (await canLaunchUrl(marketUri)) {
+        await launchUrl(marketUri, mode: LaunchMode.externalApplication);
         return;
-      } catch (_) {
-        final Uri marketUri = Uri.parse("market://details?id=$packageName");
-        if (await canLaunchUrl(marketUri)) {
-          await launchUrl(marketUri, mode: LaunchMode.externalApplication);
-          return;
-        }
       }
     }
 

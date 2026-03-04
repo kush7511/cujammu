@@ -1008,7 +1008,18 @@ class _HostelComplainTabState extends State<_HostelComplainTab>
       );
     }
 
-    final docs = snapshot.data!.docs;
+    final activeBlock = widget.hostelBlock.displayName.trim().toLowerCase();
+    final docs = snapshot.data!.docs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final recordBlock = (data['block'] as String? ?? '').trim().toLowerCase();
+      return recordBlock == activeBlock;
+    }).toList();
+
+    if (docs.isEmpty) {
+      return const Center(
+        child: Text("No complaints submitted yet for this block."),
+      );
+    }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
@@ -1316,7 +1327,18 @@ class _HostelLeaveTabState extends State<_HostelLeaveTab>
       );
     }
 
-    final docs = snapshot.data!.docs;
+    final activeBlock = widget.hostelBlock.displayName.trim().toLowerCase();
+    final docs = snapshot.data!.docs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final recordBlock = (data['block'] as String? ?? '').trim().toLowerCase();
+      return recordBlock == activeBlock;
+    }).toList();
+
+    if (docs.isEmpty) {
+      return const Center(
+        child: Text("No leave applications found for this block."),
+      );
+    }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
