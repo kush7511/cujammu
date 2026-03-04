@@ -53,6 +53,7 @@ class _DashboardTabState extends State<DashboardTab> {
 
   Future<void> _openNotificationsSheet() async {
     await UniversityNotificationService.instance.markAllAsRead();
+    if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
@@ -67,7 +68,7 @@ class _DashboardTabState extends State<DashboardTab> {
                 "Notifications",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
-                
+
               const Divider(height: 20),
               Expanded(
                 child: ListView.separated(
@@ -82,7 +83,9 @@ class _DashboardTabState extends State<DashboardTab> {
                         color: Color(0xFF003366),
                       ),
                       title: Text(item.title),
-                      subtitle: Text("${item.message}\n${_relativeTime(item.receivedAt)}"),
+                      subtitle: Text(
+                        "${item.message}\n${_relativeTime(item.receivedAt)}",
+                      ),
                       isThreeLine: true,
                     );
                   },
@@ -106,13 +109,15 @@ class _DashboardTabState extends State<DashboardTab> {
   List<_DashboardItem> _dashboardItems(BuildContext context) {
     return [
       _DashboardItem(
-        title: "Timetable",
-        icon: Icons.calendar_today,
-        color: Colors.blue,
+        title: "Academic Calendar",
+        icon: Icons.event_available,
+        color: Colors.blueGrey,
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const TimetablePage()),
+            MaterialPageRoute(
+              builder: (context) => const _AcademicCalendarPdfPage(),
+            ),
           );
         },
       ),
@@ -127,12 +132,71 @@ class _DashboardTabState extends State<DashboardTab> {
         },
       ),
       _DashboardItem(
+        title: "Book E-Bus",
+        icon: Icons.directions_bus,
+        color: Colors.indigo,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const TransportPage()),
+          );
+        },
+      ),
+      _DashboardItem(
+        title: "CUJ Radio",
+        icon: Icons.radio,
+        color: Colors.pink,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const CujRadioPage()),
+          );
+        },
+      ),
+      _DashboardItem(
+        title: "Documents",
+        icon: Icons.folder_shared,
+        color: Colors.cyan,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => _DocumentsPage(student: widget.student),
+            ),
+          );
+        },
+      ),
+      _DashboardItem(
+        title: "Exams",
+        icon: Icons.school,
+        color: Colors.teal,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => _ExamCenterPage(student: widget.student),
+            ),
+          );
+        },
+      ),
+      _DashboardItem(
         title: "Fee Payment",
         icon: Icons.account_balance_wallet,
         color: Colors.purple,
         onTap: () {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Opening Fee Payment...")),
+          );
+        },
+      ),
+      _DashboardItem(
+        title: "Hostel & Mess",
+        icon: Icons.meeting_room,
+        color: Colors.deepOrange,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const HostelAndMessPage()),
           );
         },
       ),
@@ -163,26 +227,18 @@ class _DashboardTabState extends State<DashboardTab> {
         },
       ),
       _DashboardItem(
-        title: "Exams",
-        icon: Icons.school,
-        color: Colors.teal,
+        title: "Placement Cell",
+        icon: Icons.business_center,
+        color: Colors.deepPurple,
         onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => _ExamCenterPage(student: widget.student),
+              builder: (context) => const InAppWebViewPage(
+                title: "Placement Cell",
+                url: "https://www.cujammu.ac.in/en/placements/",
+              ),
             ),
-          );
-        },
-      ),
-      _DashboardItem(
-        title: "Book E-Bus",
-        icon: Icons.directions_bus,
-        color: Colors.indigo,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const TransportPage()),
           );
         },
       ),
@@ -200,68 +256,13 @@ class _DashboardTabState extends State<DashboardTab> {
         },
       ),
       _DashboardItem(
-        title: "Hostel & Mess",
-        icon: Icons.meeting_room,
-        color: Colors.deepOrange,
+        title: "Timetable",
+        icon: Icons.calendar_today,
+        color: Colors.blue,
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => const HostelAndMessPage(),
-            ),
-          );
-        },
-      ),
-      _DashboardItem(
-        title: "Placement Cell",
-        icon: Icons.business_center,
-        color: Colors.deepPurple,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const InAppWebViewPage(
-                title: "Placement Cell",
-                url: "https://www.cujammu.ac.in/en/placements/",
-              ),
-            ),
-          );
-        },
-      ),
-      _DashboardItem(
-        title: "CUJ Radio",
-        icon: Icons.radio,
-        color: Colors.pink,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const CujRadioPage()),
-          );
-        },
-      ),
-      _DashboardItem(
-        title: "Academic Calendar",
-        icon: Icons.event_available,
-        color: Colors.blueGrey,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const _AcademicCalendarPdfPage(),
-            ),
-          );
-        },
-      ),
-      _DashboardItem(
-        title: "Documents",
-        icon: Icons.folder_shared,
-        color: Colors.cyan,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => _DocumentsPage(student: widget.student),
-            ),
+            MaterialPageRoute(builder: (context) => const TimetablePage()),
           );
         },
       ),
@@ -270,6 +271,11 @@ class _DashboardTabState extends State<DashboardTab> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgTop = isDark ? const Color(0xFF202A37) : const Color(0xFFF8FBFF);
+    final bgBottom = isDark ? const Color(0xFF1B2430) : const Color(0xFFF1F5FA);
+    final fieldBg = isDark ? const Color(0xFF2A3646) : Colors.white;
+    final chipBg = isDark ? const Color(0xFF2A3646) : Colors.white;
     final items = _dashboardItems(context);
     final query = _searchController.text.trim().toLowerCase();
     final filteredItems = query.isEmpty
@@ -287,23 +293,23 @@ class _DashboardTabState extends State<DashboardTab> {
     final crossAxisCount = screenWidth >= 1200
         ? 5
         : screenWidth >= 900
-            ? 4
-            : screenWidth >= 620
-                ? 3
-                : 2;
+        ? 4
+        : screenWidth >= 620
+        ? 3
+        : 2;
     final hour = DateTime.now().hour;
     final greeting = hour < 12
         ? "Good Morning"
         : hour < 17
-            ? "Good Afternoon"
-            : "Good Evening";
+        ? "Good Afternoon"
+        : "Good Evening";
 
     return Stack(
       children: [
         Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFFF8FBFF), Color(0xFFF1F5FA)],
+              colors: [bgTop, bgBottom],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -327,7 +333,9 @@ class _DashboardTabState extends State<DashboardTab> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF003366).withValues(alpha: 0.25),
+                              color: const Color(
+                                0xFF003366,
+                              ).withValues(alpha: 0.25),
                               blurRadius: 16,
                               offset: const Offset(0, 8),
                             ),
@@ -355,7 +363,11 @@ class _DashboardTabState extends State<DashboardTab> {
                             const SizedBox(height: 12),
                             Row(
                               children: const [
-                                Icon(Icons.grid_view_rounded, color: Colors.white70, size: 18),
+                                Icon(
+                                  Icons.grid_view_rounded,
+                                  color: Colors.white70,
+                                  size: 18,
+                                ),
                                 SizedBox(width: 8),
                                 Text(
                                   "University Services Dashboard",
@@ -389,7 +401,7 @@ class _DashboardTabState extends State<DashboardTab> {
                                         },
                                       ),
                                 filled: true,
-                                fillColor: Colors.white,
+                                fillColor: fieldBg,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(14),
                                   borderSide: BorderSide.none,
@@ -402,7 +414,7 @@ class _DashboardTabState extends State<DashboardTab> {
                             clipBehavior: Clip.none,
                             children: [
                               Material(
-                                color: Colors.white,
+                                color: fieldBg,
                                 borderRadius: BorderRadius.circular(12),
                                 child: IconButton(
                                   tooltip: "Notifications",
@@ -452,6 +464,7 @@ class _DashboardTabState extends State<DashboardTab> {
                               icon: Icons.widgets_outlined,
                               label: "Modules",
                               value: "${items.length}",
+                              backgroundColor: chipBg,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -460,14 +473,16 @@ class _DashboardTabState extends State<DashboardTab> {
                               icon: Icons.notifications_active_outlined,
                               label: "Unread",
                               value: _hasUnreadNotifications ? "Yes" : "No",
+                              backgroundColor: chipBg,
                             ),
                           ),
                           const SizedBox(width: 10),
-                          const Expanded(
+                          Expanded(
                             child: _DashboardInfoChip(
                               icon: Icons.verified_user_outlined,
                               label: "Status",
                               value: "Active",
+                              backgroundColor: chipBg,
                             ),
                           ),
                         ],
@@ -601,9 +616,7 @@ class _ExamCenterPage extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Exams"),
-      ),
+      appBar: AppBar(title: const Text("Exams")),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -658,7 +671,8 @@ class _ExamCenterPage extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (context) => const InAppWebViewPage(
                         title: "Exam Notifications",
-                        url: "https://www.cujammu.ac.in/en/viewAllNotifications/",
+                        url:
+                            "https://www.cujammu.ac.in/en/viewAllNotifications/",
                       ),
                     ),
                   );
@@ -678,29 +692,30 @@ class _ExamCenterPage extends StatelessWidget {
               ),
               _ExamActionChip(
                 label: "Admit Cards",
-                 icon: Icons.menu_book_rounded,
-                 onTap: () {
-                          Navigator.push(
-                          context,
-                            MaterialPageRoute(
-                                 builder: (_) => AdmitCardPage(student: student),
-                            ),
-                           );
-                           },
-                          ),
-              _ExamActionChip(label: "Syllabus", 
-              icon: Icons.menu_book, 
-              onTap:() {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Opening Syllabus...")),
-                );
-              },
+                icon: Icons.menu_book_rounded,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AdmitCardPage(student: student),
+                    ),
+                  );
+                },
+              ),
+              _ExamActionChip(
+                label: "Syllabus",
+                icon: Icons.menu_book,
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Opening Syllabus...")),
+                  );
+                },
               ),
               _ExamActionChip(
                 label: "Result Portal",
                 icon: Icons.assessment,
                 onTap: () {
-                 Navigator.push(
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const InAppWebViewPage(
@@ -760,10 +775,19 @@ class _ExamCenterPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _ChecklistLine(text: "Carry CUJ ID Card and hall ticket."),
-                  _ChecklistLine(text: "Reach exam hall at least 30 minutes early."),
-                  _ChecklistLine(text: "Carry blue/black pen and required stationery."),
-                  _ChecklistLine(text: "Electronic gadgets are not allowed unless permitted."),
-                  _ChecklistLine(text: "Verify subject code before starting the paper."),
+                  _ChecklistLine(
+                    text: "Reach exam hall at least 30 minutes early.",
+                  ),
+                  _ChecklistLine(
+                    text: "Carry blue/black pen and required stationery.",
+                  ),
+                  _ChecklistLine(
+                    text:
+                        "Electronic gadgets are not allowed unless permitted.",
+                  ),
+                  _ChecklistLine(
+                    text: "Verify subject code before starting the paper.",
+                  ),
                 ],
               ),
             ),
@@ -782,7 +806,14 @@ class _ExamCenterPage extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("CGPA", style: TextStyle(color: Colors.black54)),
+                      Text(
+                        "CGPA",
+                        style: TextStyle(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFFB8C3D3)
+                              : Colors.black54,
+                        ),
+                      ),
                       Text(
                         student.cgpa.toStringAsFixed(1),
                         style: const TextStyle(
@@ -796,9 +827,13 @@ class _ExamCenterPage extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         "Subjects Evaluated",
-                        style: TextStyle(color: Colors.black54),
+                        style: TextStyle(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFFB8C3D3)
+                              : Colors.black54,
+                        ),
                       ),
                       Text(
                         "${student.results.length}",
@@ -983,7 +1018,7 @@ class _AcademicCalendarPdfPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Academic Calendar")),
-      body: SfPdfViewer.asset("assets/pdfs/2026.pdf"),
+      body: SfPdfViewer.asset("assets/pdfs/ac2526.pdf"),
     );
   }
 }
@@ -1031,11 +1066,9 @@ class _DocumentsPageState extends State<_DocumentsPage> {
       _documents
         ..clear()
         ..addAll(
-          parsed
-              .whereType<Map>()
-              .map(
-                (e) => _SecureDocument.fromJson(Map<String, dynamic>.from(e)),
-              ),
+          parsed.whereType<Map>().map(
+            (e) => _SecureDocument.fromJson(Map<String, dynamic>.from(e)),
+          ),
         );
     } catch (_) {
       // Ignore malformed persisted data.
@@ -1101,7 +1134,10 @@ class _DocumentsPageState extends State<_DocumentsPage> {
                         value: "Marksheet",
                         child: Text("Marksheet"),
                       ),
-                      DropdownMenuItem(value: "ID Card", child: Text("ID Card")),
+                      DropdownMenuItem(
+                        value: "ID Card",
+                        child: Text("ID Card"),
+                      ),
                       DropdownMenuItem(
                         value: "Certificate",
                         child: Text("Certificate"),
@@ -1182,7 +1218,8 @@ class _DocumentsPageState extends State<_DocumentsPage> {
                           _documents.insert(
                             0,
                             _SecureDocument(
-                              id: DateTime.now().microsecondsSinceEpoch.toString(),
+                              id: DateTime.now().microsecondsSinceEpoch
+                                  .toString(),
                               title: title,
                               category: category,
                               imageBase64: base64Encode(bytes),
@@ -1300,7 +1337,9 @@ class _DocumentsPageState extends State<_DocumentsPage> {
                           context: context,
                           builder: (_) => Dialog(
                             child: InteractiveViewer(
-                              child: Image.memory(base64Decode(doc.imageBase64)),
+                              child: Image.memory(
+                                base64Decode(doc.imageBase64),
+                              ),
                             ),
                           ),
                         );
@@ -1378,19 +1417,22 @@ class _DashboardInfoChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
+  final Color backgroundColor;
 
   const _DashboardInfoChip({
     required this.icon,
     required this.label,
     required this.value,
+    required this.backgroundColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -1403,17 +1445,21 @@ class _DashboardInfoChip extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: Color(0xFF64748B),
+                    color: isDark
+                        ? const Color(0xFFB8C3D3)
+                        : const Color(0xFF64748B),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: Color(0xFF0F172A),
+                    color: isDark
+                        ? const Color(0xFFE6EDF7)
+                        : const Color(0xFF0F172A),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1442,18 +1488,26 @@ class DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = isDark ? const Color(0xFF2A3646) : Colors.white;
+    final titleColor = isDark
+        ? const Color(0xFFE6EDF7)
+        : const Color(0xFF0F172A);
+    final shadowColor = isDark
+        ? const Color(0xFF020617).withValues(alpha: 0.22)
+        : const Color(0xFF0F172A).withValues(alpha: 0.06);
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: color.withValues(alpha: 0.2)),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+              color: shadowColor,
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -1478,10 +1532,10 @@ class DashboardCard extends StatelessWidget {
               title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 15,
-                color: Color(0xFF0F172A),
+                color: titleColor,
               ),
             ),
           ],

@@ -4,6 +4,7 @@ import '../data/student_db.dart';
 import '../services/session_service.dart';
 import 'home_screen.dart';
 import '../services/app_settings_service.dart';
+import 'admin_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   final AppSettings settings;
@@ -91,8 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final roll = rollCtrl.text.trim();
     final pass = passCtrl.text.trim();
 
-    if (studentDB.containsKey(roll) &&
-        studentDB[roll]!.password == pass) {
+    if (studentDB.containsKey(roll) && studentDB[roll]!.password == pass) {
       if (widget.settings.biometricLoginEnabled) {
         setState(() {
           _isAuthenticating = true;
@@ -129,9 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _openRegistrationScreen() async {
     final registered = await Navigator.push<_RegisteredCredentials>(
       context,
-      MaterialPageRoute(
-        builder: (_) => const _NewStudentRegistrationScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const _NewStudentRegistrationScreen()),
     );
     if (!mounted || registered == null) return;
     setState(() {
@@ -174,7 +172,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: const InputDecoration(
                         labelText: "Enrollment Number",
                       ),
-                      validator: (value) => value == null || value.trim().isEmpty
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
                           ? "Enrollment number is required"
                           : null,
                     ),
@@ -183,7 +182,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: deletePassCtrl,
                       obscureText: true,
                       decoration: const InputDecoration(labelText: "Password"),
-                      validator: (value) => value == null || value.trim().isEmpty
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
                           ? "Password is required"
                           : null,
                     ),
@@ -192,7 +192,9 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: deleting ? null : () => Navigator.pop(dialogContext),
+                  onPressed: deleting
+                      ? null
+                      : () => Navigator.pop(dialogContext),
                   child: const Text("Cancel"),
                 ),
                 FilledButton(
@@ -218,9 +220,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           });
 
                           if (err != null) {
-                            ScaffoldMessenger.of(dialogContext).showSnackBar(
-                              SnackBar(content: Text(err)),
-                            );
+                            ScaffoldMessenger.of(
+                              dialogContext,
+                            ).showSnackBar(SnackBar(content: Text(err)));
                             return;
                           }
 
@@ -236,7 +238,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           });
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text("Student account deleted successfully."),
+                              content: Text(
+                                "Student account deleted successfully.",
+                              ),
                             ),
                           );
                         },
@@ -260,9 +264,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoadingStudents) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -336,8 +338,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF003366),
                                   foregroundColor: Colors.white,
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -350,36 +353,65 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             const SizedBox(height: 10),
-                            Padding(
-                              padding: const EdgeInsets.all(5),
-                              child: SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  onPressed: _openRegistrationScreen,
-                                  icon: const Icon(Icons.person_add_alt_1),
-                                  label: const Text("Create New Account"),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: const Color(0xFF003366),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const RoleLoginScreen(
+                                        role: DashboardRole.admin,
+                                      ),
                                     ),
-                                    side: const BorderSide(
-                                      color: Color(0xFF003366),
-                                      width: 1.2,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.admin_panel_settings),
+                                label: const Text("Admin Login"),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF003366),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  side: const BorderSide(
+                                    color: Color(0xFF003366),
+                                    width: 1.2,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
                               ),
                             ),
-                            TextButton.icon(
-                              onPressed: _showDeleteAccountDialog,
-                              icon: const Icon(Icons.delete_outline),
-                              label: const Text("Delete Account"),
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.red.shade700,
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const RoleLoginScreen(
+                                        role: DashboardRole.authority,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.shield_outlined),
+                                label: const Text("Authority Login"),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF003366),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  side: const BorderSide(
+                                    color: Color(0xFF003366),
+                                    width: 1.2,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 10),
@@ -550,7 +582,9 @@ class _NewStudentRegistrationScreenState
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final contentMaxWidth = constraints.maxWidth < 600 ? 520.0 : 640.0;
+              final contentMaxWidth = constraints.maxWidth < 600
+                  ? 520.0
+                  : 640.0;
               return SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(
                   16,
@@ -643,7 +677,8 @@ class _NewStudentRegistrationScreenState
                             ),
                             validator: (value) {
                               final text = value?.trim() ?? "";
-                              if (text.isEmpty) return "Phone number is required";
+                              if (text.isEmpty)
+                                return "Phone number is required";
                               if (int.tryParse(text) == null) {
                                 return "Enter valid digits only";
                               }

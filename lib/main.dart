@@ -12,28 +12,21 @@ import 'services/session_service.dart';
 import 'firebase_options.dart'; // Ensure this file contains DefaultFirebaseOptions
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   await UniversityNotificationService.instance.initialize();
   await UniversityNotificationService.instance.storeRemoteMessage(message);
 }
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  FirebaseMessaging.onBackgroundMessage(
-    _firebaseMessagingBackgroundHandler,
-  );
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   runApp(const CUJApp());
 }
-
-
 
 class CUJApp extends StatefulWidget {
   const CUJApp({super.key});
@@ -58,6 +51,7 @@ class _CUJAppState extends State<CUJApp> {
     _initializeApp();
     _initializeNotifications();
   }
+
   Future<void> _initializeNotifications() async {
     await UniversityNotificationService.instance.initialize();
   }
@@ -101,57 +95,108 @@ class _CUJAppState extends State<CUJApp> {
     await _updateSettings(_settings.copyWith(biometricLoginEnabled: enabled));
   }
 
+  ThemeData _lightTheme() {
+    final scheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF003366),
+      brightness: Brightness.light,
+    );
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: const Color(0xFFF5F8FC),
+      cardColor: Colors.white,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.white,
+        foregroundColor: Color(0xFF0F172A),
+        elevation: 0,
+      ),
+      dividerColor: const Color(0xFFE2E8F0),
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(color: Color(0xFF0F172A)),
+        bodyMedium: TextStyle(color: Color(0xFF0F172A)),
+        titleLarge: TextStyle(color: Color(0xFF0F172A)),
+      ),
+    );
+  }
+
+  ThemeData _darkTheme() {
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: const Color(0xFF5E9BD6),
+          brightness: Brightness.dark,
+        ).copyWith(
+          surface: const Color(0xFF252F3D),
+          onSurface: const Color(0xFFE6EDF7),
+          onSurfaceVariant: const Color(0xFFB8C3D3),
+          primary: const Color(0xFF8AB4E2),
+          secondary: const Color(0xFF9BB7D7),
+          outline: const Color(0xFF3B495C),
+        );
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: scheme,
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: const Color(0xFF1F2733),
+      canvasColor: const Color(0xFF1F2733),
+      cardColor: const Color(0xFF2A3646),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF273142),
+        foregroundColor: Color(0xFFE6EDF7),
+        elevation: 0,
+      ),
+      dividerColor: const Color(0xFF3B495C),
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(color: Color(0xFFE6EDF7)),
+        bodyMedium: TextStyle(color: Color(0xFFE6EDF7)),
+        titleLarge: TextStyle(color: Color(0xFFE6EDF7)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-  future: Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  ),
-  builder: (context, snapshot) {
-    if (snapshot.connectionState == ConnectionState.waiting) {
-      return const MaterialApp(
-        home: Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
-      );
-    }
+      future: Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const MaterialApp(
+            home: Scaffold(body: Center(child: CircularProgressIndicator())),
+          );
+        }
 
-    if (snapshot.hasError) {
-      return MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Text(
-              "Firebase Error: ${snapshot.error}",
-              textAlign: TextAlign.center,
+        if (snapshot.hasError) {
+          return MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: Text(
+                  "Firebase Error: ${snapshot.error}",
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
-          ),
-        ),
-      );
-    }
+          );
+        }
 
-    return MaterialApp(
-      title: 'CU Jammu',
-      debugShowCheckedModeBanner: false,
-      themeMode:
-          _settings.darkModeEnabled ? ThemeMode.dark : ThemeMode.light,
-      theme: ThemeData(
-        primaryColor: const Color(0xFF003366),
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        useMaterial3: true,
-      ),
-      home: !_splashDone
-          ? _WelcomeSplashScreen(
-              onCompleted: () {
-                if (!mounted) return;
-                setState(() {
-                  _splashDone = true;
-                });
-              },
-            )
-          : _isLoading
+        return MaterialApp(
+          title: 'CU Jammu',
+          debugShowCheckedModeBanner: false,
+          themeMode: _settings.darkModeEnabled
+              ? ThemeMode.dark
+              : ThemeMode.light,
+          theme: _lightTheme(),
+          darkTheme: _darkTheme(),
+          home: !_splashDone
+              ? _WelcomeSplashScreen(
+                  onCompleted: () {
+                    if (!mounted) return;
+                    setState(() {
+                      _splashDone = true;
+                    });
+                  },
+                )
+              : _isLoading
               ? const _InitialLoadingScreen()
               : (_loggedInStudent != null
                     ? HomeScreen(
@@ -167,9 +212,9 @@ class _CUJAppState extends State<CUJApp> {
                         onNotificationsChanged: _setNotificationsEnabled,
                         onBiometricLoginChanged: _setBiometricLoginEnabled,
                       )),
+        );
+      },
     );
-  },
-);
   }
 }
 
@@ -178,9 +223,7 @@ class _InitialLoadingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }
 
@@ -218,16 +261,11 @@ class _WelcomeSplashScreenState extends State<_WelcomeSplashScreen>
       begin: 0.2,
       end: 1,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
-    _textSlide = Tween<Offset>(
-      begin: const Offset(0, 0.5),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.25, 1)),
-    );
-    _textOpacity = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(
+    _textSlide = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero)
+        .animate(
+          CurvedAnimation(parent: _controller, curve: const Interval(0.25, 1)),
+        );
+    _textOpacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _controller, curve: const Interval(0.25, 1)),
     );
     _controller.forward();

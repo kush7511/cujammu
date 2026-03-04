@@ -74,12 +74,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final surface = Theme.of(context).colorScheme.surface;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F8FC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF0F172A),
+        backgroundColor: surface,
+        foregroundColor: onSurface,
         titleSpacing: 12,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,10 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Row(
                   children: [
-                    _StudentAvatar(
-                      student: _student,
-                      radius: 50,
-                    ),
+                    _StudentAvatar(student: _student, radius: 50),
                     const SizedBox(width: 15),
                     Expanded(
                       child: Column(
@@ -168,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
               ),
-              const Divider(height: 1),
+              Divider(height: 1, color: Theme.of(context).dividerColor),
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 10, 16, 12),
                 child: Column(
@@ -263,20 +262,27 @@ class _DrawerNavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final base = accentColor ?? const Color(0xFF003366);
+    final idleText = isDark
+        ? Theme.of(context).colorScheme.onSurface
+        : const Color(0xFF0F172A);
+    final idleIcon = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       child: Material(
         color: isSelected ? base.withValues(alpha: 0.12) : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         child: ListTile(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           onTap: onTap,
-          leading: Icon(icon, color: isSelected ? base : const Color(0xFF334155)),
+          leading: Icon(icon, color: isSelected ? base : idleIcon),
           title: Text(
             title,
             style: TextStyle(
-              color: isSelected ? base : const Color(0xFF0F172A),
+              color: isSelected ? base : idleText,
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
             ),
           ),
@@ -496,9 +502,9 @@ class ProfileTab extends StatelessWidget {
     final updated = studentDB[student.roll] ?? student;
     onStudentUpdated(updated);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Profile picture updated.")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Profile picture updated.")));
   }
 
   Future<void> _removeProfilePicture(BuildContext context) async {
@@ -536,7 +542,10 @@ class ProfileTab extends StatelessWidget {
                 title: const Text("Choose from Gallery"),
                 onTap: () async {
                   Navigator.pop(sheetContext);
-                  await _pickAndSaveProfilePicture(context, ImageSource.gallery);
+                  await _pickAndSaveProfilePicture(
+                    context,
+                    ImageSource.gallery,
+                  );
                 },
               ),
               if ((student.profileImageBase64 ?? "").trim().isNotEmpty)
@@ -877,7 +886,12 @@ class HelpTab extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const TechSupport(studentName: '', enrollmentNumber: '',)),
+                  MaterialPageRoute(
+                    builder: (context) => const TechSupport(
+                      studentName: '',
+                      enrollmentNumber: '',
+                    ),
+                  ),
                 );
               },
             ),
