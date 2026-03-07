@@ -5,6 +5,7 @@ import 'package:cuj/screens/hostel_blocks/hostel_and_mess_page.dart';
 import 'package:cuj/screens/in_app_webview_page.dart';
 import 'package:cuj/screens/timetable_page.dart';
 import 'package:cuj/screens/transport_page.dart';
+import 'package:cuj/screens/tabs/call_track_ev_tab.dart';
 import 'cuj_radio_page.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -139,6 +140,22 @@ class _DashboardTabState extends State<DashboardTab> {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const TransportPage()),
+          );
+        },
+      ),
+      _DashboardItem(
+        title: "Call/Track EV",
+        icon: Icons.electric_bolt,
+        color: Colors.lightGreen,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CallTrackEvTab(
+                studentName: widget.student.name,
+                enrollmentNumber: widget.student.roll,
+              ),
+            ),
           );
         },
       ),

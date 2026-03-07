@@ -15,6 +15,10 @@
             "name": "Flutter",
             "request": "launch",
             "type": "dart",
+            "env": {
+                "ANDROID_USER_HOME": "${env:USERPROFILE}\\.android",
+                "ANDROID_AVD_HOME": "${env:USERPROFILE}\\.android\\avd"
+            },
             "args": [
              "--dart-define=GEMINI_API_KEY=YOUR_REAL_KEY"
           ]
@@ -30,6 +34,10 @@
             "name": "cuj",
             "request": "launch",
             "type": "dart",
+            "env": {
+                "ANDROID_USER_HOME": "${env:USERPROFILE}\\.android",
+                "ANDROID_AVD_HOME": "${env:USERPROFILE}\\.android\\avd"
+            },
             "toolArgs": [
                 "--dart-define",
                 "OPENAI_API_KEY=YOUR_OPENAI_API_KEY"
@@ -39,12 +47,20 @@
             "name": "cuj (profile mode)",
             "request": "launch",
             "type": "dart",
+            "env": {
+                "ANDROID_USER_HOME": "${env:USERPROFILE}\\.android",
+                "ANDROID_AVD_HOME": "${env:USERPROFILE}\\.android\\avd"
+            },
             "flutterMode": "profile"
         },
         {
             "name": "cuj (release mode)",
             "request": "launch",
             "type": "dart",
+            "env": {
+                "ANDROID_USER_HOME": "${env:USERPROFILE}\\.android",
+                "ANDROID_AVD_HOME": "${env:USERPROFILE}\\.android\\avd"
+            },
             "flutterMode": "release"
         },
         

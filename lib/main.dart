@@ -369,4 +369,5 @@ class _WelcomeSplashScreenState extends State<_WelcomeSplashScreen>
       ),
     );
   }
-}
+} 
+

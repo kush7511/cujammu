@@ -677,8 +677,9 @@ class _NewStudentRegistrationScreenState
                             ),
                             validator: (value) {
                               final text = value?.trim() ?? "";
-                              if (text.isEmpty)
+                              if (text.isEmpty) {
                                 return "Phone number is required";
+                              }
                               if (int.tryParse(text) == null) {
                                 return "Enter valid digits only";
                               }
