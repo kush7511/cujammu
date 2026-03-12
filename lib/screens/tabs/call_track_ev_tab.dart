@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:cuj/screens/track_ev_screen.dart';
+import 'package:geolocator/geolocator.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -16,15 +18,29 @@ class CallTrackEvTab extends StatefulWidget {
 
 class _CallTrackEvTabState extends State<CallTrackEvTab> {
   static const LatLng _campusCenter = LatLng(32.63445556, 75.01293333);
-  static const LatLng _defaultStudentLocation = LatLng(32.6336, 75.0153);
+  static const LatLng _defaultStudentLocation = LatLng(32.6356171, 75.0097347);
 
   static const String _liveCollection = "ev_tracking";
   static const String _liveDocId = "active_ev";
 
   late LatLng _evPosition;
+  late LatLng _studentLocation;
   late Timer _simulatedMovementTimer;
+  GoogleMapController? _mapController;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _evLiveSub;
 
+  Future<void> _getStudentLocation() async {
+
+  LocationPermission permission = await Geolocator.requestPermission();
+
+  Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high);
+
+  setState(() {
+    _studentLocation = LatLng(position.latitude, position.longitude);
+  });
+
+}
   final List<LatLng> _evRoute = const [
     LatLng(32.6341, 75.0090),
     LatLng(32.6348, 75.0104),
@@ -49,23 +65,26 @@ class _CallTrackEvTabState extends State<CallTrackEvTab> {
   String? _trackingError;
   bool _mapInitError = false;
 
-  static const List<String> _pickupPoints = <String>[
-    "Main Gate",
-    "Chanakya Bhawan",
-    "DDE Building",
-    "Febricated Building",
-    "Tunnel",
-    "PMMMM Block",
-    "ISRO Building",
-    "Aryabhatta Building",
-    "J&K Bank"
-
-  ];
+final Map<String, LatLng> _pickupPoints = {
+  "Main Gate": const LatLng(32.6356171, 75.0097347),
+  "Chanakya Bhawan": const LatLng(32.6354835, 75.012956),
+  "DDE Building": const LatLng(32.6354973, 75.012965),
+  "Fabricated Building": const LatLng(32.6381354, 75.0172288),
+  "Tunnel": const LatLng(32.6400467, 75.02102),
+  "PMMMM Block": const LatLng(32.641294, 75.0221268),
+  "Between PMMMM and ISRO": const LatLng(32.6426812, 75.019644),
+  "ISRO Building": const LatLng(32.639711, 75.0138771),
+  "Aryabhatta Building": const LatLng(32.6395103, 75.0127762),
+  "J&K Bank": const LatLng(32.6363242, 75.0123275),
+};
 
   @override
   void initState() {
     super.initState();
+    _getStudentLocation();
     _evPosition = _evRoute.first;
+    _studentLocation =
+        _pickupPoints[_pickupPoint] ?? _defaultStudentLocation;
     _simulatedMovementTimer = Timer.periodic(
       const Duration(seconds: 4),
       (_) => _moveEvFallback(),
@@ -77,7 +96,16 @@ class _CallTrackEvTabState extends State<CallTrackEvTab> {
   void dispose() {
     _simulatedMovementTimer.cancel();
     _evLiveSub?.cancel();
+    _mapController?.dispose();
     super.dispose();
+  }
+
+  void _focusOnPickupPoint() {
+    _mapController?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: _studentLocation, zoom: 17),
+      ),
+    );
   }
 
   void _startLiveTracking() {
@@ -196,14 +224,16 @@ class _CallTrackEvTabState extends State<CallTrackEvTab> {
 
     try {
       await FirebaseFirestore.instance.collection("ev_requests").add({
-        "pickupPoint": _pickupPoint,
-        "studentName": widget.studentName ?? "Student",
-        "enrollmentNumber": widget.enrollmentNumber ?? "",
-        "studentLatitude": _defaultStudentLocation.latitude,
-        "studentLongitude": _defaultStudentLocation.longitude,
-        "status": "requested",
-        "requestedAt": FieldValue.serverTimestamp(),
-      });
+  "studentName": widget.studentName,
+  "enrollmentNumber": widget.enrollmentNumber,
+  "pickupPoint": _pickupPoint,
+  "studentLocation": GeoPoint(_studentLocation.latitude, _studentLocation.longitude),
+  "latitude": _studentLocation.latitude,
+  "longitude": _studentLocation.longitude,
+  "status": "requested",
+  "requestedAt": FieldValue.serverTimestamp(),
+});
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -223,35 +253,18 @@ class _CallTrackEvTabState extends State<CallTrackEvTab> {
   }
 
   Set<Marker> _markers() {
-    return <Marker>{
-      Marker(
-        markerId: const MarkerId("ev_marker"),
-        position: _evPosition,
-        infoWindow: InfoWindow(
-          title: "CUJ Electric Vehicle ($_vehicleLabel)",
-          snippet: _hasLiveSignal ? "Live GPS" : "Default simulation",
-        ),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+  return {
+    Marker(
+      markerId: const MarkerId("student_location"),
+      position: _studentLocation,
+      infoWindow: const InfoWindow(
+        title: "Your Location",
       ),
-      const Marker(
-        markerId: MarkerId("student_marker"),
-        position: _defaultStudentLocation,
-        infoWindow: InfoWindow(
-          title: "Your Location",
-          snippet: "Default location for now",
-        ),
-      ),
-      Marker(
-        markerId: const MarkerId("campus_center"),
-        position: _campusCenter,
-        infoWindow: const InfoWindow(
-          title: "Central University of Jammu",
-          snippet: "Campus center",
-        ),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-      ),
-    };
-  }
+      icon: BitmapDescriptor.defaultMarkerWithHue(
+          BitmapDescriptor.hueGreen),
+    ),
+  };
+}
 
   Set<Polyline> _polylines() {
     final routePoints = _hasLiveSignal && _liveTrail.length > 1
@@ -264,10 +277,10 @@ class _CallTrackEvTabState extends State<CallTrackEvTab> {
         color: const Color(0xFF0F766E),
         width: 4,
       ),
-      const Polyline(
-        polylineId: PolylineId("pickup_line"),
-        points: <LatLng>[_defaultStudentLocation, _campusCenter],
-        color: Color(0xFF334155),
+      Polyline(
+        polylineId: const PolylineId("pickup_line"),
+        points: <LatLng>[_studentLocation, _campusCenter],
+        color: const Color(0xFF334155),
         width: 2,
       ),
     };
@@ -314,17 +327,19 @@ class _CallTrackEvTabState extends State<CallTrackEvTab> {
     }
 
     return GoogleMap(
-      initialCameraPosition: const CameraPosition(target: _campusCenter, zoom: 15.2),
+      initialCameraPosition: CameraPosition(target: _studentLocation, zoom: 16.5),
       mapType: MapType.normal,
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
       markers: _markers(),
       polylines: _polylines(),
-      onMapCreated: (_) {
+      onMapCreated: (controller) {
+        _mapController = controller;
         if (!mounted) return;
         setState(() {
           _mapInitError = false;
         });
+        _focusOnPickupPoint();
       },
     );
   }
@@ -388,33 +403,38 @@ class _CallTrackEvTabState extends State<CallTrackEvTab> {
                         ],
                       ),
                       const SizedBox(height: 10),
-                      Row(
+                      DropdownButtonFormField<String>(
+                        initialValue: _pickupPoint,
+                        decoration: const InputDecoration(
+                          labelText: "Pickup Point",
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        items: _pickupPoints.keys.map((point) {
+                          return DropdownMenuItem<String>(
+                            value: point,
+                            child: Text(point),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                              if (value == null) return;
+
+                              setState(() {
+                                _pickupPoint = value;
+                              });
+
+                              final LatLng selectedLocation = _pickupPoints[value]!;
+
+                              setState(() {
+                                _evPosition = selectedLocation;
+                              });
+                            },
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
                         children: [
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              initialValue: _pickupPoint,
-                              decoration: const InputDecoration(
-                                labelText: "Pickup Point",
-                                border: OutlineInputBorder(),
-                                isDense: true,
-                              ),
-                              items: _pickupPoints
-                                  .map(
-                                    (point) => DropdownMenuItem<String>(
-                                      value: point,
-                                      child: Text(point),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (value) {
-                                if (value == null) return;
-                                setState(() {
-                                  _pickupPoint = value;
-                                });
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 10),
                           ElevatedButton.icon(
                             onPressed: _callEv,
                             icon: const Icon(Icons.call),
@@ -425,6 +445,18 @@ class _CallTrackEvTabState extends State<CallTrackEvTab> {
                                 vertical: 15,
                               ),
                             ),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const TrackEVScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.map_outlined),
+                            label: const Text("Track EV"),
                           ),
                         ],
                       ),
