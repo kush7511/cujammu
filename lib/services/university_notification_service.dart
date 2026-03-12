@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'notification_backend_service.dart';
@@ -138,10 +139,10 @@ class UniversityNotificationService {
       );
 
       _messaging.onTokenRefresh.listen((newToken) {
-        print("🔄 Token refreshed: $newToken");
+        debugPrint("Token refreshed: $newToken");
       });
     } catch (e) {
-      print("Token registration error: $e");
+      debugPrint("Token registration error: $e");
     }
   }
 

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../data/student_db.dart';
+import '../../models/student.dart';
 
 class ResultsTab extends StatelessWidget {
   final Student student;

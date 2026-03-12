@@ -36,6 +36,7 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
 
   bool _isLoading = false;
   String? _conversationId;
+  String? _lastTechnicalError;
 
   @override
   void dispose() {
@@ -66,21 +67,37 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
 
       if (!mounted) return;
       setState(() {
-        _messages.add(_ChatMessage(text: reply, role: _MessageRole.assistant));
+        _lastTechnicalError = null;
+        _messages.add(
+          _ChatMessage(text: reply.text, role: _MessageRole.assistant),
+        );
       });
 
       // Best-effort persistence. AI reply should still work if Firestore fails.
-      await _persistConversationTurn(userText: userText, botReply: reply);
+      await _persistConversationTurn(
+        userText: userText,
+        botReply: reply.text,
+        status: "success",
+        model: reply.model,
+      );
     } catch (e) {
+      final fallbackReply = _chatService.userFacingError(e);
       if (!mounted) return;
       setState(() {
+        _lastTechnicalError = e.toString();
         _messages.add(
           _ChatMessage(
-            text: _chatService.userFacingError(e),
+            text: "$fallbackReply\n\nTechnical details: ${_chatService.technicalSummary(e)}",
             role: _MessageRole.system,
           ),
         );
       });
+      await _persistConversationTurn(
+        userText: userText,
+        botReply: fallbackReply,
+        status: "error",
+        errorDetails: e.toString(),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -94,6 +111,9 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
   Future<void> _persistConversationTurn({
     required String userText,
     required String botReply,
+    required String status,
+    String? model,
+    String? errorDetails,
   }) async {
     try {
       if (_conversationId == null) {
@@ -103,13 +123,17 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
           "studentName": widget.studentName,
           "enrollmentNumber": widget.enrollmentNumber,
           "description":
-          "Chat between ${widget.studentName} (${widget.enrollmentNumber}) and CUJ AI Assistant",
+              "Chat between ${widget.studentName} (${widget.enrollmentNumber}) and CUJ AI Assistant",
           "createdAt": FieldValue.serverTimestamp(),
           "lastUpdated": FieldValue.serverTimestamp(),
+          "latestStatus": status,
         });
         _conversationId = doc.id;
       }
 
+      final conversationRef = FirebaseFirestore.instance
+          .collection("chat_conversations")
+          .doc(_conversationId);
       final messagesRef = FirebaseFirestore.instance
           .collection("chat_conversations")
           .doc(_conversationId)
@@ -125,13 +149,41 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
         "sender": "bot",
         "text": botReply,
         "timestamp": FieldValue.serverTimestamp(),
+        "status": status,
+        if (model != null) "model": model,
+        if (errorDetails != null) "errorDetails": errorDetails,
       });
 
-      await FirebaseFirestore.instance
-          .collection("chat_conversations")
-          .doc(_conversationId)
-          .update({
+      await conversationRef.collection("query_logs").add({
+        "studentName": widget.studentName,
+        "enrollmentNumber": widget.enrollmentNumber,
+        "userQuery": userText,
+        "chatbotAnswer": botReply,
+        "status": status,
+        "conversationId": _conversationId,
+        "timestamp": FieldValue.serverTimestamp(),
+        if (model != null) "model": model,
+        if (errorDetails != null) "errorDetails": errorDetails,
+      });
+
+      await FirebaseFirestore.instance.collection("chatbot_query_logs").add({
+        "studentName": widget.studentName,
+        "enrollmentNumber": widget.enrollmentNumber,
+        "userQuery": userText,
+        "chatbotAnswer": botReply,
+        "status": status,
+        "conversationId": _conversationId,
+        "timestamp": FieldValue.serverTimestamp(),
+        if (model != null) "model": model,
+        if (errorDetails != null) "errorDetails": errorDetails,
+      });
+
+      await conversationRef.update({
         "lastUpdated": FieldValue.serverTimestamp(),
+        "latestQuestion": userText,
+        "latestAnswer": botReply,
+        "latestStatus": status,
+        if (model != null) "latestModel": model,
       });
     } catch (_) {
       // Ignore Firestore failures to keep chat functional.
@@ -194,6 +246,21 @@ class _CujChatbotSheetState extends State<CujChatbotSheet> {
               ),
             ),
             const SizedBox(height: 10),
+            if (_lastTechnicalError != null)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF4E5),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE0A100)),
+                ),
+                child: Text(
+                  "Last error: ${_chatService.technicalSummary(_lastTechnicalError!)}",
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF7A4E00)),
+                ),
+              ),
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
@@ -290,20 +357,21 @@ class _ChatTurn {
 class _CujAiChatService {
   static const String _apiKeyFromDefine =
       String.fromEnvironment("GEMINI_API_KEY");
+  static const String _fallbackApiKey =
+      "AIzaSyASgQtQVSc52Kxwk-MvtrAhpCSNEnXQcss";
 
   static const List<String> _models = [
+    "gemini-2.5-flash",
     "gemini-2.0-flash",
     "gemini-1.5-flash",
     "gemini-1.5-flash-latest",
   ];
 
-  Future<String> ask(List<_ChatTurn> history) async {
-    final apiKey = _apiKeyFromDefine.trim();
+  Future<_ChatReply> ask(List<_ChatTurn> history) async {
+    final apiKey = _resolveApiKey();
 
     if (apiKey.isEmpty) {
-      throw Exception(
-        "Gemini API key is not configured. Run/build with --dart-define=GEMINI_API_KEY=YOUR_KEY.",
-      );
+      throw Exception("Gemini API key missing.");
     }
 
     final contents = history.map((turn) {
@@ -323,7 +391,9 @@ class _CujAiChatService {
           model: model,
           contents: contents,
         );
-        if (text.isNotEmpty) return text;
+        if (text.isNotEmpty) {
+          return _ChatReply(text: text, model: model);
+        }
       } catch (e) {
         lastError = Exception(e.toString());
       }
@@ -350,24 +420,19 @@ class _CujAiChatService {
               "parts": [
                 {
                   "text":
-                      "You are CUJ AI Assistant for the Central University of Jammu (CUJ). "
-                      "Provide detailed, well-structured, and professional answers of at least 200-300 words. "
-                      "Start responses with a friendly and professional tone like: "
-                      "'Certainly! Here is a detailed explanation regarding your query:' "
-                      "Organize answers clearly using paragraphs and bullet points where required. "
-                      "Only answer questions related to CUJ.",
+                      "You are CUJ AI Assistant for Central University of Jammu. "
+                      "Answer only questions related to CUJ university, admissions, hostels, EV transport, courses, exams and campus services."
                 }
               ]
             },
             "generationConfig": {
-              "maxOutputTokens": 800,
-              "temperature": 0.5,
-              "topP": 0.9,
+              "temperature": 0.6,
+              "maxOutputTokens": 600,
             },
             "contents": contents,
           }),
         )
-        .timeout(const Duration(seconds: 25));
+        .timeout(const Duration(seconds: 30));
 
     if (response.statusCode != 200) {
       String errorMessage = "HTTP ${response.statusCode}";
@@ -382,12 +447,30 @@ class _CujAiChatService {
     }
 
     final data = jsonDecode(response.body);
+    final promptFeedback = data["promptFeedback"];
+    if (promptFeedback is Map<String, dynamic>) {
+      final blockReason = promptFeedback["blockReason"]?.toString();
+      if (blockReason != null && blockReason.isNotEmpty) {
+        throw Exception("Response blocked: $blockReason");
+      }
+    }
+
     final candidates = data["candidates"];
     if (candidates is! List || candidates.isEmpty) {
       throw Exception("No response candidates returned by AI.");
     }
 
-    final content = candidates.first["content"];
+    final candidate = candidates.first;
+    if (candidate is! Map<String, dynamic>) {
+      throw Exception("Invalid AI response candidate.");
+    }
+
+    final finishReason = candidate["finishReason"]?.toString();
+    if (finishReason == "SAFETY" || finishReason == "RECITATION") {
+      throw Exception("Response blocked: $finishReason");
+    }
+
+    final content = candidate["content"];
     if (content is! Map<String, dynamic>) {
       throw Exception("Invalid AI response content.");
     }
@@ -410,18 +493,43 @@ class _CujAiChatService {
     return text;
   }
 
+  String _resolveApiKey() {
+    if (_apiKeyFromDefine.trim().isNotEmpty) {
+      return _apiKeyFromDefine.trim();
+    }
+    return _fallbackApiKey.trim();
+  }
+
   String userFacingError(Object error) {
     final msg = error.toString();
-    if (msg.contains("API key is not configured") ||
-        msg.contains("API_KEY_INVALID")) {
-      return "Chatbot is not configured with a valid AI key. Please contact support to set GEMINI_API_KEY.";
+    if (msg.contains("API key") || msg.contains("API_KEY_INVALID")) {
+      return "AI service is not configured correctly.";
     }
     if (msg.contains("PERMISSION_DENIED")) {
-      return "Chatbot permission is denied for this API key. Please verify Gemini API access.";
+      return "This API key is currently denied access for Gemini.";
     }
-    if (msg.contains("timed out")) {
-      return "Chatbot request timed out. Please check internet and try again.";
+    if (msg.contains("RESOURCE_EXHAUSTED") || msg.toLowerCase().contains("quota")) {
+      return "This API key has hit its quota or rate limit.";
     }
-    return "I could not fetch the answer right now. Please try again.";
+    if (msg.contains("timed out") || msg.contains("TimeoutException")) {
+      return "AI request timed out. Please try again.";
+    }
+    if (msg.contains("blocked")) {
+      return "The AI service blocked this request or response.";
+    }
+    return "I could not fetch the answer right now. Please try again later.";
   }
+
+  String technicalSummary(Object error) {
+    final msg = error.toString().replaceFirst("Exception: ", "").trim();
+    if (msg.length <= 180) return msg;
+    return "${msg.substring(0, 180)}...";
+  }
+}
+
+class _ChatReply {
+  final String text;
+  final String model;
+
+  const _ChatReply({required this.text, required this.model});
 }

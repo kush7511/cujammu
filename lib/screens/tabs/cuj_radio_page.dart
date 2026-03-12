@@ -38,6 +38,7 @@ class _CujRadioPageState extends State<CujRadioPage> {
         });
       });
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error loading radio: $e")),
       );

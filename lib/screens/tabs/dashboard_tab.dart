@@ -13,8 +13,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import '../../data/student_db.dart';
+import '../../models/student.dart';
 import '../../services/university_notification_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DashboardTab extends StatefulWidget {
   final Student student;
@@ -279,7 +280,12 @@ class _DashboardTabState extends State<DashboardTab> {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const TimetablePage()),
+            MaterialPageRoute(
+              builder: (_) => const _FirestorePdfPage(
+                title: "Timetable",
+                documentId: "timetable",
+              ),
+            ),
           );
         },
       ),
@@ -1033,9 +1039,102 @@ class _AcademicCalendarPdfPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return const _FirestorePdfPage(
+      title: "Academic Calendar",
+      documentId: "academic_calendar",
+    );
+  }
+}
+
+class _FirestorePdfPage extends StatefulWidget {
+  final String title;
+  final String documentId;
+
+  const _FirestorePdfPage({
+    required this.title,
+    required this.documentId,
+  });
+
+  @override
+  State<_FirestorePdfPage> createState() => _FirestorePdfPageState();
+}
+
+class _FirestorePdfPageState extends State<_FirestorePdfPage> {
+  late final Future<String> _pdfUrlFuture = _loadPdfUrl();
+
+  Future<String> _loadPdfUrl() async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection("documents")
+        .doc(widget.documentId)
+        .get();
+
+    if (!snapshot.exists) {
+      throw Exception("Document '${widget.documentId}' was not found.");
+    }
+
+    final data = snapshot.data();
+    final rawUrl = (data?["url"] as String? ?? "").trim();
+    if (rawUrl.isEmpty) {
+      throw Exception("PDF URL is missing for '${widget.documentId}'.");
+    }
+
+    return _normalizePdfUrl(rawUrl);
+  }
+
+  String _normalizePdfUrl(String rawUrl) {
+    final uri = Uri.tryParse(rawUrl);
+    if (uri == null) return rawUrl;
+
+    if (!uri.host.contains("drive.google.com")) {
+      return rawUrl;
+    }
+
+    final idFromQuery = uri.queryParameters["id"];
+    if (idFromQuery != null && idFromQuery.isNotEmpty) {
+      return "https://drive.google.com/uc?export=download&id=$idFromQuery";
+    }
+
+    final segments = uri.pathSegments;
+    final fileIndex = segments.indexOf("d");
+    if (fileIndex != -1 && fileIndex + 1 < segments.length) {
+      final fileId = segments[fileIndex + 1];
+      return "https://drive.google.com/uc?export=download&id=$fileId";
+    }
+
+    return rawUrl;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Academic Calendar")),
-      body: SfPdfViewer.asset("assets/pdfs/ac2526.pdf"),
+      appBar: AppBar(title: Text(widget.title)),
+      body: FutureBuilder<String>(
+        future: _pdfUrlFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  "Unable to load PDF.\n${snapshot.error}",
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
+
+          final pdfUrl = snapshot.data;
+          if (pdfUrl == null || pdfUrl.isEmpty) {
+            return const Center(child: Text("No PDF URL available."));
+          }
+
+          return SfPdfViewer.network(pdfUrl);
+        },
+      ),
     );
   }
 }

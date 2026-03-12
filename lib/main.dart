@@ -2,13 +2,16 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:async';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
-import 'data/student_db.dart';
+import 'models/student.dart';
 import 'services/app_settings_service.dart';
 import 'services/university_notification_service.dart';
 import 'services/session_service.dart';
+import 'services/student_firestore_service.dart';
+
 import 'firebase_options.dart'; // Ensure this file contains DefaultFirebaseOptions
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -44,13 +47,35 @@ class _CUJAppState extends State<CUJApp> {
   Student? _loggedInStudent;
   bool _isLoading = true;
   bool _splashDone = false;
+  bool _isOffline = false;
+  StreamSubscription<dynamic>? _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
     _initializeApp();
     _initializeNotifications();
+    _watchConnectivity();
   }
+
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
+  }
+
+
+  Future<void> initFCM() async {            //FCM Token retrieval and permission request
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  // Request permission
+  await messaging.requestPermission();
+
+  // Get device token
+  String? token = await messaging.getToken();
+
+  debugPrint("FCM Token: $token");
+}
 
   Future<void> _initializeNotifications() async {
     await UniversityNotificationService.instance.initialize();
@@ -58,10 +83,18 @@ class _CUJAppState extends State<CUJApp> {
 
   Future<void> _initializeApp() async {
     try {
-      await loadRegisteredStudents();
       final loadedSettings = await AppSettingsService.loadSettings();
       final savedRoll = await SessionService.getLoggedInRoll();
-      final savedStudent = savedRoll == null ? null : studentDB[savedRoll];
+      Student? savedStudent;
+      if (savedRoll != null) {
+        try {
+          savedStudent = await StudentFirestoreService.fetchStudentByRoll(
+            savedRoll,
+          );
+        } catch (_) {
+          savedStudent = null;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _settings = loadedSettings;
@@ -69,6 +102,11 @@ class _CUJAppState extends State<CUJApp> {
         _isLoading = false;
       });
     } on PlatformException {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -93,6 +131,38 @@ class _CUJAppState extends State<CUJApp> {
 
   Future<void> _setBiometricLoginEnabled(bool enabled) async {
     await _updateSettings(_settings.copyWith(biometricLoginEnabled: enabled));
+  }
+
+  Future<void> _watchConnectivity() async {
+    final connectivity = Connectivity();
+    final dynamic initial = await connectivity.checkConnectivity();
+    if (!mounted) return;
+    setState(() {
+      _isOffline = _isOfflineFromConnectivityResult(initial);
+    });
+    _connectivitySubscription = connectivity.onConnectivityChanged.listen((
+      dynamic result,
+    ) {
+      if (!mounted) return;
+      final isOfflineNow = _isOfflineFromConnectivityResult(result);
+      if (_isOffline == isOfflineNow) return;
+      setState(() {
+        _isOffline = isOfflineNow;
+      });
+    });
+  }
+
+  bool _isOfflineFromConnectivityResult(dynamic result) {
+    return switch (result) {
+      ConnectivityResult singleResult => singleResult == ConnectivityResult.none,
+      List<ConnectivityResult> listResult => listResult.every(
+        (entry) => entry == ConnectivityResult.none,
+      ),
+      List listResult => !listResult.any(
+        (entry) => entry != ConnectivityResult.none,
+      ),
+      _ => true,
+    };
   }
 
   ThemeData _lightTheme() {
@@ -187,6 +257,39 @@ class _CUJAppState extends State<CUJApp> {
               : ThemeMode.light,
           theme: _lightTheme(),
           darkTheme: _darkTheme(),
+          builder: (context, child) {
+            return Stack(
+              children: [
+                if (child != null) child,
+                if (_isOffline)
+                  const Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: Material(
+                      color: Color(0xFFB71C1C),
+                      child: SafeArea(
+                        bottom: false,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: Text(
+                            "No internet connection",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
           home: !_splashDone
               ? _WelcomeSplashScreen(
                   onCompleted: () {
@@ -231,7 +334,7 @@ class _WelcomeSplashScreen extends StatefulWidget {
   final VoidCallback onCompleted;
 
   const _WelcomeSplashScreen({required this.onCompleted});
-
+  
   @override
   State<_WelcomeSplashScreen> createState() => _WelcomeSplashScreenState();
 }

@@ -14,11 +14,13 @@ dependencies:
   http: ^1.2.0
   url_launcher: ^6.2.5
   firebase_database: 12.1.3
+  firebase_storage: 13.0.6
+  file_picker: ^8.0.0
   webview_flutter: ^4.10.0
   google_maps_flutter: ^2.6.0
   syncfusion_flutter_pdfviewer: ^32.2.5
   flutter_pdfview: ^1.3.2
-  geolocator: 11.0.0
+  geolocator: ^10.1.0
   shared_preferences: ^2.3.2
   local_auth: ^2.3.0
   image_picker: ^1.1.2
@@ -31,7 +33,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   firebase_core: ^4.4.0
   firebase_messaging: ^16.1.1
-  cloud_firestore: 6.1.2
+  cloud_firestore: ^6.1.2
+  connectivity_plus: ^6.1.4
   just_audio: ^0.9.36
 
 dev_dependencies:
@@ -45,9 +48,9 @@ dev_dependencies:
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/images/CU_JAMMU-removebg-preview.png"
+  image_path: "assets/images/logocuj.png"
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/images/CU_JAMMU-removebg-preview.png"
+  adaptive_icon_foreground: "assets/images/logocuj.png"
 
 flutter:
   uses-material-design: true

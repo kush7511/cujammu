@@ -30,17 +30,20 @@ class _CallTrackEvTabState extends State<CallTrackEvTab> {
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _evLiveSub;
 
   Future<void> _getStudentLocation() async {
+    final permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      return;
+    }
 
-  LocationPermission permission = await Geolocator.requestPermission();
+    final position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
 
-  Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high);
-
-  setState(() {
-    _studentLocation = LatLng(position.latitude, position.longitude);
-  });
-
-}
+    setState(() {
+      _studentLocation = LatLng(position.latitude, position.longitude);
+    });
+  }
   final List<LatLng> _evRoute = const [
     LatLng(32.6341, 75.0090),
     LatLng(32.6348, 75.0104),
@@ -253,18 +256,27 @@ final Map<String, LatLng> _pickupPoints = {
   }
 
   Set<Marker> _markers() {
-  return {
-    Marker(
-      markerId: const MarkerId("student_location"),
-      position: _studentLocation,
-      infoWindow: const InfoWindow(
-        title: "Your Location",
+    return {
+      Marker(
+        markerId: const MarkerId("student_location"),
+        position: _studentLocation,
+        infoWindow: const InfoWindow(
+          title: "Your Location",
+        ),
+        icon: BitmapDescriptor.defaultMarkerWithHue(
+          BitmapDescriptor.hueGreen,
+        ),
       ),
-      icon: BitmapDescriptor.defaultMarkerWithHue(
-          BitmapDescriptor.hueGreen),
-    ),
-  };
-}
+      Marker(
+        markerId: const MarkerId("ev_location"),
+        position: _evPosition,
+        infoWindow: InfoWindow(
+          title: _vehicleLabel,
+          snippet: "Driver: $_driverName",
+        ),
+      ),
+    };
+  }
 
   Set<Polyline> _polylines() {
     final routePoints = _hasLiveSignal && _liveTrail.length > 1

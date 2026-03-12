@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+
 enum DashboardRole { admin, authority }
 
 const Color _brandBlue = Color(0xFF003366);
@@ -66,6 +67,8 @@ class _RoleLoginScreenState extends State<RoleLoginScreen> {
     );
   }
 
+
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -156,6 +159,7 @@ class _RoleLoginScreenState extends State<RoleLoginScreen> {
       ),
     );
   }
+  
 
   InputDecoration _fieldDecoration(
     String label,

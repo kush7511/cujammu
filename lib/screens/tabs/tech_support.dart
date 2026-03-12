@@ -131,9 +131,9 @@ Widget _buildTrackTickets() {
               trailing: Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _getStatusColor(status)
-                      .withOpacity(0.15),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(status)
+                      .withValues(alpha: 0.15),
                   borderRadius:
                       BorderRadius.circular(20),
                 ),
@@ -357,7 +357,7 @@ class _TrackTicketsTab extends StatelessWidget {
                       horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: _getStatusColor(status)
-                        .withOpacity(0.15),
+                        .withValues(alpha: 0.15),
                     borderRadius:
                         BorderRadius.circular(20),
                   ),

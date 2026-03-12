@@ -211,7 +211,7 @@ class AdmitCardPage extends StatelessWidget {
 
           pw.SizedBox(height: 10),
 
-          pw.Table.fromTextArray(
+          pw.TableHelper.fromTextArray(
             headers: ["Subject", "Date", "Time", "Venue"],
             data: exams.map((exam) {
               return [
@@ -267,6 +267,7 @@ class AdmitCardPage extends StatelessWidget {
     final file = File("${directory.path}/AdmitCard_${student.roll}.pdf");
 
     await file.writeAsBytes(await pdf.save());
+    if (!context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Admit Card downloaded successfully")),

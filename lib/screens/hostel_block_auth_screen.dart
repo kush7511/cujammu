@@ -887,6 +887,7 @@ class _HostelComplainTabState extends State<_HostelComplainTab>
       });
 
       _detailsCtrl.clear();
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Complaint submitted successfully")),
@@ -895,6 +896,7 @@ class _HostelComplainTabState extends State<_HostelComplainTab>
       _tabController.animateTo(1);
 
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
       );
@@ -1167,6 +1169,7 @@ class _HostelLeaveTabState extends State<_HostelLeaveTab>
         "status": "Pending",
         "createdAt": FieldValue.serverTimestamp(),
       });
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Leave application submitted")),
@@ -1183,6 +1186,7 @@ class _HostelLeaveTabState extends State<_HostelLeaveTab>
       _tabController.animateTo(1);
 
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
       );

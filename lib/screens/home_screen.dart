@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cuj/screens/login_screen.dart';
 import 'package:cuj/screens/tabs/tech_support.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -8,14 +10,17 @@ import 'package:image/image.dart' as img;
 import 'package:local_auth/local_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../data/student_db.dart';
+import '../models/student.dart';
 import '../services/app_settings_service.dart';
 import '../services/session_service.dart';
+import '../services/student_firestore_service.dart';
 import 'tabs/dashboard_tab.dart';
 import 'tabs/results_tab.dart';
 import 'tabs/attendance_tab.dart';
-import 'tabs/ComplainPage.dart';
-import 'tabs/FAQPage.dart';
+import 'tabs/complain_page.dart';
+import 'tabs/faq_page.dart';
+import 'tabs/privacy_policy.dart';
+import 'tabs/terms_and_conditions.dart';
 
 class HomeScreen extends StatefulWidget {
   final Student student;
@@ -59,7 +64,19 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _student = widget.student;
+    saveFCMToken(_student.roll);
   }
+
+  Future<void> saveFCMToken(String roll) async {
+  String? token = await FirebaseMessaging.instance.getToken();
+
+  await FirebaseFirestore.instance
+      .collection("students")
+      .doc(roll)
+      .set({
+    "fcmToken": token,
+  }, SetOptions(merge: true));
+}
 
   void _selectTab(int newIndex) {
     setState(() => index = newIndex);
@@ -413,7 +430,7 @@ class _SettingsTabState extends State<SettingsTab> {
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Language settings coming soon")),
+                const SnackBar(content: Text("More languages will be added soon......")),
               );
             },
           ),
@@ -423,13 +440,14 @@ class _SettingsTabState extends State<SettingsTab> {
             leading: const Icon(Icons.lock_outline),
             title: const Text("Privacy Policy"),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Privacy policy page coming soon"),
-                ),
-              );
-            },
+           onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PrivacyPolicy(),
+                    ),
+                  );
+                },
           ),
         ),
         Card(
@@ -438,10 +456,13 @@ class _SettingsTabState extends State<SettingsTab> {
             title: const Text("Terms & Conditions"),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Terms page coming soon")),
-              );
-            },
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TermsandConditions(),
+                    ),
+                  );
+                },
           ),
         ),
         const Card(
@@ -495,11 +516,12 @@ class ProfileTab extends StatelessWidget {
       );
       return;
     }
-    await updateStudentProfileImage(
-      roll: student.roll,
-      profileImageBase64: imageBase64,
-    );
-    final updated = studentDB[student.roll] ?? student;
+    final updated =
+        await StudentFirestoreService.updateProfileImage(
+          roll: student.roll,
+          profileImageBase64: imageBase64,
+        ) ??
+        student;
     onStudentUpdated(updated);
     if (!context.mounted) return;
     ScaffoldMessenger.of(
@@ -508,11 +530,12 @@ class ProfileTab extends StatelessWidget {
   }
 
   Future<void> _removeProfilePicture(BuildContext context) async {
-    await updateStudentProfileImage(
-      roll: student.roll,
-      profileImageBase64: null,
-    );
-    final updated = studentDB[student.roll] ?? student;
+    final updated =
+        await StudentFirestoreService.updateProfileImage(
+          roll: student.roll,
+          profileImageBase64: null,
+        ) ??
+        student;
     onStudentUpdated(updated);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -653,7 +676,9 @@ class ProfileTab extends StatelessWidget {
                     spacing: 6,
                     children: [
                       Text(student.name),
-                      if (isProtectedStudentRoll(student.roll))
+                      if (StudentFirestoreService.isProtectedStudentRoll(
+                        student.roll,
+                      ))
                         const Icon(
                           Icons.verified,
                           color: Color(0xFF1976D2),
@@ -775,7 +800,7 @@ class _StudentAvatar extends StatelessWidget {
       }
     }
 
-    if (student.roll == protectedDeveloperRoll) {
+    if (student.roll == StudentFirestoreService.protectedDeveloperRoll) {
       return CircleAvatar(
         radius: radius,
         backgroundImage: const AssetImage("assets/images/profile_picture.png"),
